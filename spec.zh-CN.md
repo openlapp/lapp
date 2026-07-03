@@ -43,7 +43,7 @@ LAPP v1 主要面向个人本机和开发环境。生产系统可以复用 LAPP 
 ```
 
 - `providers/{providerId}/provider.json`：必需，供应商基础配置。
-- `providers/{providerId}/models.json`：可选，供应商模型清单。
+- `providers/{providerId}/models.json`：供应商模型清单；最小可用 profile 建议包含。
 - `global.json`：可选，全局默认模型。
 - `manifest.json`：可选，LAPP 根目录元信息。
 
@@ -108,7 +108,7 @@ LAPP v1 建议优先支持：
 
 ## global.json
 
-`global.json` 保存应用没有自己偏好时可参考的默认模型：
+`global.json` 保存应用没有自己偏好时可参考的默认模型。它是可选文件，不能替代 `models.json`：
 
 ```json
 {
@@ -122,4 +122,4 @@ LAPP v1 建议优先支持：
 
 `model` 永远是字符串。LAPP 不解析模型 ID 中的 `/`。
 
-可直接使用的最小 profile 建议包含带有 `defaultModel` 的 `global.json`。没有 `global.json` 的 profile 仍然可以合法，但应用可能需要让用户手动选择或输入模型 ID。
+没有 `global.json` 的 profile 仍然合法。应用可以从 `models.json` 中选择模型，或让用户自己选择。

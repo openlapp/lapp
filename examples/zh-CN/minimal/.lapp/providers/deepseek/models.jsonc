@@ -1,0 +1,19 @@
+{
+  // LAPP schema 版本。
+  "schemaVersion": "1.0",
+
+  // 用于模型发现的最小模型清单。
+  "models": [
+    {
+      "id": "deepseek-v4-flash",
+      "source": "manual",
+      "name": "DeepSeek V4 Flash",
+      "aliases": ["deepseek-v4-flash", "ds-v4-flash"],
+      "type": "chat",
+      "inputModalities": ["text"],
+      "outputModalities": ["text"],
+      "capabilities": ["chat", "stream"],
+      "enabled": true
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  // LAPP schema version.
+  "schemaVersion": "1.0",
+
+  // Minimal model list for discovery.
+  "models": [
+    {
+      "id": "deepseek-v4-flash",
+      "source": "manual",
+      "name": "DeepSeek V4 Flash",
+      "aliases": ["deepseek-v4-flash", "ds-v4-flash"],
+      "type": "chat",
+      "inputModalities": ["text"],
+      "outputModalities": ["text"],
+      "capabilities": ["chat", "stream"],
+      "enabled": true
+    }
+  ]
+}

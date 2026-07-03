@@ -19,10 +19,11 @@
 - `baseUrl`
 - `auth.secret`
 - 明文 secret 和 `env://`
+- 用于模型发现的 `models.json`
 
-`models.json`、`global.json`、`links`、`requestHeaders` 都属于增强体验。
+`global.json`、`links`、`requestHeaders` 属于增强体验。
 
-如果希望最小 profile 打开后就能直接使用，建议同时提供带有 `defaultModel` 的 `global.json`。`models.json` 仍然是可选的；没有模型清单时，应用可以直接使用默认模型字符串，或让用户手动输入模型 ID。
+最小可用 profile 应包含至少一个模型条目的 `models.json`。`global.json` 是可选的默认偏好文件；没有它，应用仍然可以从 `models.json` 中选择模型。
 
 ## LAPP_HOME
 

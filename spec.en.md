@@ -43,7 +43,7 @@ LAPP v1 is mainly intended for personal local use and development environments. 
 ```
 
 - `providers/{providerId}/provider.json`: required provider configuration.
-- `providers/{providerId}/models.json`: optional provider model list.
+- `providers/{providerId}/models.json`: provider model list; recommended for the minimal useful profile.
 - `global.json`: optional global default models.
 - `manifest.json`: optional root metadata.
 
@@ -108,7 +108,7 @@ Model-level `source`:
 
 ## global.json
 
-`global.json` stores defaults applications can use when they do not have their own preference:
+`global.json` stores defaults applications can use when they do not have their own preference. It is optional and does not replace `models.json`:
 
 ```json
 {
@@ -122,4 +122,4 @@ Model-level `source`:
 
 `model` is always a string. LAPP does not parse `/` inside model IDs.
 
-A ready-to-use minimal profile should include `global.json` with `defaultModel`. A profile without `global.json` can still be valid, but applications may need to ask the user for a model ID.
+A profile without `global.json` is still valid. Applications can select from `models.json` or let the user choose a model.

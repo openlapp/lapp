@@ -61,10 +61,10 @@ LAPP 把这些共享 profile 数据放在一个可预测的本机目录里，让
 
 ```text
 ~/.lapp/
-├── global.json
 └── providers/
     └── deepseek/
-        └── provider.json
+        ├── provider.json
+        └── models.json
 ```
 
 ```json
@@ -82,22 +82,24 @@ LAPP 把这些共享 profile 数据放在一个可预测的本机目录里，让
 ```json
 {
   "schemaVersion": "1.0",
-  "defaultModel": {
-    "providerId": "deepseek",
-    "model": "deepseek-v4-flash"
-  }
+  "models": [
+    {
+      "id": "deepseek-v4-flash",
+      "source": "manual",
+      "type": "chat",
+      "capabilities": ["chat", "stream"]
+    }
+  ]
 }
 ```
 
-一个最小 LAPP v1 应用只需要扫描：
+一个最小 LAPP v1 应用会先扫描：
 
 ```text
 ~/.lapp/providers/*/provider.json
 ```
 
-并读取 `id`、`protocol`、`baseUrl` 和 `auth.secret`。
-
-最小形态不要求 `models.json`。如果没有模型清单，应用仍然可以使用 `global.json` 中的默认模型，或让用户手动输入模型 ID。
+对每个 provider，应用读取 `id`、`protocol`、`baseUrl` 和 `auth.secret`，再读取同目录的 `models.json` 来发现模型。`global.json` 是可选的默认偏好文件，用来保存用户或环境的默认选择，不是模型清单本身。
 
 ## 目录结构
 
@@ -112,7 +114,7 @@ LAPP 把这些共享 profile 数据放在一个可预测的本机目录里，让
 ```
 
 - `provider.json`：必需的供应商 profile
-- `models.json`：可选的模型列表、别名和能力描述
+- `models.json`：供应商模型列表、别名和能力描述；推荐用于有实际发现能力的 profile
 - `global.json`：可选的默认对话、向量、语音和视频模型
 - `manifest.json`：可选的根目录元信息
 

@@ -19,10 +19,11 @@ A minimal implementation only needs:
 - `baseUrl`
 - `auth.secret`
 - plain secret strings and `env://`
+- `models.json` for model discovery
 
-`models.json`, `global.json`, `links`, and `requestHeaders` are enhanced behavior.
+`global.json`, `links`, and `requestHeaders` are enhanced behavior.
 
-For a minimal profile that can be used immediately, include `global.json` with `defaultModel`. `models.json` is still optional; without it, applications can use the default model string directly or ask the user to enter a model ID.
+For a minimal useful profile, include `models.json` with at least one model entry. `global.json` is optional and only stores defaults; applications can still pick a model from `models.json` without it.
 
 ## LAPP_HOME
 

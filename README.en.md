@@ -61,10 +61,10 @@ The smallest useful LAPP profile is just one provider:
 
 ```text
 ~/.lapp/
-├── global.json
 └── providers/
     └── deepseek/
-        └── provider.json
+        ├── provider.json
+        └── models.json
 ```
 
 ```json
@@ -82,22 +82,24 @@ The smallest useful LAPP profile is just one provider:
 ```json
 {
   "schemaVersion": "1.0",
-  "defaultModel": {
-    "providerId": "deepseek",
-    "model": "deepseek-v4-flash"
-  }
+  "models": [
+    {
+      "id": "deepseek-v4-flash",
+      "source": "manual",
+      "type": "chat",
+      "capabilities": ["chat", "stream"]
+    }
+  ]
 }
 ```
 
-A minimal LAPP v1 application only needs to scan:
+A minimal LAPP v1 application starts by scanning:
 
 ```text
 ~/.lapp/providers/*/provider.json
 ```
 
-and read `id`, `protocol`, `baseUrl`, and `auth.secret`.
-
-`models.json` is not required for the minimal shape. If it is absent, an application can still use `global.json` or let the user type a model ID manually.
+For each provider, it reads `id`, `protocol`, `baseUrl`, and `auth.secret`, then reads the sibling `models.json` for model discovery. `global.json` is optional; it stores user or environment defaults, not the model list itself.
 
 ## Directory Layout
 
@@ -112,7 +114,7 @@ and read `id`, `protocol`, `baseUrl`, and `auth.secret`.
 ```
 
 - `provider.json`: required provider profile
-- `models.json`: optional model list, aliases, and capabilities
+- `models.json`: provider model list, aliases, and capabilities; recommended for useful discovery
 - `global.json`: optional default chat, embedding, speech, and video models
 - `manifest.json`: optional root metadata
 
