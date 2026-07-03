@@ -29,7 +29,7 @@ const MODEL_REF_KEYS = [
 function usage() {
   return `Usage: node tools/validator/lapp-validate.mjs [path-to-.lapp]
 
-If no path is provided, the validator checks ./.lapp.
+If no path is provided, the validator checks LAPP_HOME first, then ./.lapp.
 
 Exit codes:
   0  no ERROR
@@ -325,7 +325,7 @@ function validateManifest(root, reporter) {
 }
 
 function validate(targetArg) {
-  const root = path.resolve(targetArg || ".lapp");
+  const root = path.resolve(targetArg || process.env.LAPP_HOME || ".lapp");
   const reporter = new Reporter(root);
   const providerRecords = new Map();
 

@@ -4,11 +4,31 @@ LAPP stands for Local AI Provider Profiles. It defines a lightweight directory c
 
 ## Threat Model
 
-LAPP is not a secret vault and not a security sandbox. It standardizes provider profile discovery; it does not protect secrets from malware or untrusted local applications that can read the user's files.
+LAPP is not a secret vault or a security sandbox. It standardizes provider profile discovery; it does not protect secrets from malware or untrusted local applications that can read the user's files.
 
 If an application directly calls a provider API, it must eventually obtain usable credentials. Allowing an application to read a usable LAPP profile should therefore be treated as allowing that application to use the referenced provider credentials.
 
-LAPP can reduce accidental secret sprawl by recommending `env://` and `keychain://` references, and by warning about plain secrets. It cannot make an untrusted local application both unable to read a key and still able to call a provider directly. That stronger model requires a trusted broker, local gateway, server-side proxy, OS permission system, or provider-issued scoped/short-lived credentials outside the LAPP v1 core.
+LAPP can reduce accidental secret sprawl by recommending `env://` and `keychain://` references, and by warning about plain secrets. It cannot make an untrusted local application both unable to read a key and still able to call a provider directly. That stronger model needs a trusted broker, local gateway, server-side proxy, OS permission system, or provider-issued scoped and short-lived credentials. Those are outside the LAPP v1 core.
+
+## Root Directory
+
+The default LAPP root is:
+
+```text
+~/.lapp
+```
+
+Applications may also support `LAPP_HOME` as a root-directory override:
+
+```bash
+LAPP_HOME=/path/to/.lapp
+```
+
+`LAPP_HOME` points to the LAPP root directory, not to a provider directory. If it is set, applications should read that location first. If it is not set, applications should fall back to `~/.lapp`.
+
+`LAPP_HOME` is a location override, not a secrecy mechanism. It is useful for workspaces, CI, containers, portable setups, managed environments, and users who do not want to store profiles at the default path. It does not protect secrets from software that can read environment variables or local files.
+
+LAPP v1 is mainly intended for personal local use and development environments. Production systems may reuse the LAPP profile shape, but should not treat local files as their credential boundary. Production deployments should use a secret manager, KMS, vault, workload identity, trusted broker, or server-side gateway for credential control.
 
 ## Directory Layout
 

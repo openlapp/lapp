@@ -2,7 +2,7 @@
 
 ## 读取顺序
 
-1. 定位 LAPP 根目录，默认是 `~/.lapp`。
+1. 定位 LAPP 根目录。设置了 `LAPP_HOME` 时优先使用它；否则默认使用 `~/.lapp`。
 2. 扫描 `providers/*/provider.json`。
 3. 跳过 `enabled: false` 的供应商。
 4. 对支持的 `protocol` 创建可用供应商条目。
@@ -21,6 +21,18 @@
 - 明文 secret 和 `env://`
 
 `models.json`、`global.json`、`links`、`requestHeaders` 都属于增强体验。
+
+## LAPP_HOME
+
+`LAPP_HOME` 是可选的根目录覆盖：
+
+```bash
+LAPP_HOME=/path/to/.lapp
+```
+
+它指向 LAPP 根目录，不是 provider 目录。它适合 CI、容器、工作区、受管环境和便携配置。
+
+`LAPP_HOME` 不是安全边界，不应该被描述成隐藏密钥的办法。
 
 ## URL 处理
 

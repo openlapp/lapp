@@ -40,6 +40,8 @@ Instead of asking every AI app to configure DeepSeek, Kimi, OpenAI, MiniMax, Sil
 
 LAPP does **not** run a local service, proxy requests, manage billing, enforce fallback, or become another gateway. It only describes what providers and models the user already has.
 
+The default root is `~/.lapp`. Applications may support `LAPP_HOME` as a root-directory override for workspaces, CI, containers, or managed environments. `LAPP_HOME` is a location override, not a secrecy mechanism.
+
 ## Why
 
 AI applications keep reimplementing the same provider settings page:

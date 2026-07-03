@@ -10,7 +10,7 @@ The validator can warn about plain secrets and sensitive headers, but it is not 
 node tools/validator/lapp-validate.mjs <path-to-.lapp>
 ```
 
-If no path is provided, the validator checks `./.lapp`.
+If no path is provided, the validator checks `LAPP_HOME` first, then `./.lapp`.
 
 Examples:
 

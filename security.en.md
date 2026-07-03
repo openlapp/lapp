@@ -10,7 +10,21 @@ LAPP does not protect secrets from malware or untrusted local applications with 
 
 If an application directly calls a provider API, it must eventually obtain usable credentials. Users should treat access to a usable LAPP profile as permission for that application to use the referenced provider credentials.
 
-To prevent an application from ever seeing the provider key while still allowing model calls, the key must live behind a trusted broker, local gateway, server-side proxy, OS permission system, or short-lived scoped credential flow. That is outside LAPP v1.
+To let an application call a model without ever seeing the provider key, the key must live behind a trusted broker, local gateway, server-side proxy, OS permission system, or short-lived scoped credential flow. That is outside LAPP v1.
+
+## LAPP_HOME
+
+Applications may support `LAPP_HOME` to read profiles from a non-default root directory. This is useful for development workspaces, CI, containers, portable setups, and managed environments.
+
+`LAPP_HOME` is not a secrecy mechanism. If malware can read environment variables, it can find the override path. If it can read local files, moving the directory does not make secrets safe.
+
+Use `LAPP_HOME` for environment separation, not for secret isolation.
+
+## Production Use
+
+LAPP v1 is mainly designed for personal local use and development. Production systems may reuse the profile shape, but should not rely on local files as their credential boundary.
+
+For production credentials, use a proper secret manager, KMS, vault, workload identity, trusted broker, server-side gateway, scoped keys, rotation, and audit controls.
 
 ## Secret Forms
 

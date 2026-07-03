@@ -2,7 +2,7 @@
 
 ## Read Order
 
-1. Locate the LAPP root directory, defaulting to `~/.lapp`.
+1. Locate the LAPP root directory. If `LAPP_HOME` is set, use it first. Otherwise default to `~/.lapp`.
 2. Scan `providers/*/provider.json`.
 3. Skip providers with `enabled: false`.
 4. Create usable provider entries for supported `protocol` values.
@@ -21,6 +21,18 @@ A minimal implementation only needs:
 - plain secret strings and `env://`
 
 `models.json`, `global.json`, `links`, and `requestHeaders` are enhanced behavior.
+
+## LAPP_HOME
+
+`LAPP_HOME` is an optional root-directory override:
+
+```bash
+LAPP_HOME=/path/to/.lapp
+```
+
+It points to the LAPP root, not to a provider directory. It is useful for CI, containers, workspaces, managed environments, and portable setups.
+
+`LAPP_HOME` is not a security boundary. It should not be described as a way to hide secrets.
 
 ## URL Handling
 
