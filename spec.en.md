@@ -2,6 +2,14 @@
 
 LAPP stands for Local AI Provider Profiles. It defines a lightweight directory convention that lets applications discover AI providers already configured on the user's machine.
 
+## Threat Model
+
+LAPP is not a secret vault and not a security sandbox. It standardizes provider profile discovery; it does not protect secrets from malware or untrusted local applications that can read the user's files.
+
+If an application directly calls a provider API, it must eventually obtain usable credentials. Allowing an application to read a usable LAPP profile should therefore be treated as allowing that application to use the referenced provider credentials.
+
+LAPP can reduce accidental secret sprawl by recommending `env://` and `keychain://` references, and by warning about plain secrets. It cannot make an untrusted local application both unable to read a key and still able to call a provider directly. That stronger model requires a trusted broker, local gateway, server-side proxy, OS permission system, or provider-issued scoped/short-lived credentials outside the LAPP v1 core.
+
 ## Directory Layout
 
 ```text

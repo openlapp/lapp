@@ -2,6 +2,8 @@
 
 This is a read-only reference validator for LAPP directories. It never edits `.lapp` files, never writes secrets, and never makes network requests.
 
+The validator can warn about plain secrets and sensitive headers, but it is not a secret vault or sandbox. It does not protect credentials from malware or untrusted local applications with filesystem access.
+
 ## Usage
 
 ```bash
