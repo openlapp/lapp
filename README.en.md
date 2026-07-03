@@ -61,6 +61,7 @@ The smallest useful LAPP profile is just one provider:
 
 ```text
 ~/.lapp/
+├── global.json
 └── providers/
     └── deepseek/
         └── provider.json
@@ -78,6 +79,16 @@ The smallest useful LAPP profile is just one provider:
 }
 ```
 
+```json
+{
+  "schemaVersion": "1.0",
+  "defaultModel": {
+    "providerId": "deepseek",
+    "model": "deepseek-v4-flash"
+  }
+}
+```
+
 A minimal LAPP v1 application only needs to scan:
 
 ```text
@@ -85,6 +96,8 @@ A minimal LAPP v1 application only needs to scan:
 ```
 
 and read `id`, `protocol`, `baseUrl`, and `auth.secret`.
+
+`models.json` is not required for the minimal shape. If it is absent, an application can still use `global.json` or let the user type a model ID manually.
 
 ## Directory Layout
 

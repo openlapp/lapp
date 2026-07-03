@@ -22,6 +22,8 @@ A minimal implementation only needs:
 
 `models.json`, `global.json`, `links`, and `requestHeaders` are enhanced behavior.
 
+For a minimal profile that can be used immediately, include `global.json` with `defaultModel`. `models.json` is still optional; without it, applications can use the default model string directly or ask the user to enter a model ID.
+
 ## LAPP_HOME
 
 `LAPP_HOME` is an optional root-directory override:

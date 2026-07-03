@@ -61,6 +61,7 @@ LAPP 把这些共享 profile 数据放在一个可预测的本机目录里，让
 
 ```text
 ~/.lapp/
+├── global.json
 └── providers/
     └── deepseek/
         └── provider.json
@@ -78,6 +79,16 @@ LAPP 把这些共享 profile 数据放在一个可预测的本机目录里，让
 }
 ```
 
+```json
+{
+  "schemaVersion": "1.0",
+  "defaultModel": {
+    "providerId": "deepseek",
+    "model": "deepseek-v4-flash"
+  }
+}
+```
+
 一个最小 LAPP v1 应用只需要扫描：
 
 ```text
@@ -85,6 +96,8 @@ LAPP 把这些共享 profile 数据放在一个可预测的本机目录里，让
 ```
 
 并读取 `id`、`protocol`、`baseUrl` 和 `auth.secret`。
+
+最小形态不要求 `models.json`。如果没有模型清单，应用仍然可以使用 `global.json` 中的默认模型，或让用户手动输入模型 ID。
 
 ## 目录结构
 

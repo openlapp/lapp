@@ -121,3 +121,5 @@ Model-level `source`:
 ```
 
 `model` is always a string. LAPP does not parse `/` inside model IDs.
+
+A ready-to-use minimal profile should include `global.json` with `defaultModel`. A profile without `global.json` can still be valid, but applications may need to ask the user for a model ID.

@@ -22,6 +22,8 @@
 
 `models.json`、`global.json`、`links`、`requestHeaders` 都属于增强体验。
 
+如果希望最小 profile 打开后就能直接使用，建议同时提供带有 `defaultModel` 的 `global.json`。`models.json` 仍然是可选的；没有模型清单时，应用可以直接使用默认模型字符串，或让用户手动输入模型 ID。
+
 ## LAPP_HOME
 
 `LAPP_HOME` 是可选的根目录覆盖：

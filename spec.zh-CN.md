@@ -121,3 +121,5 @@ LAPP v1 建议优先支持：
 ```
 
 `model` 永远是字符串。LAPP 不解析模型 ID 中的 `/`。
+
+可直接使用的最小 profile 建议包含带有 `defaultModel` 的 `global.json`。没有 `global.json` 的 profile 仍然可以合法，但应用可能需要让用户手动选择或输入模型 ID。
