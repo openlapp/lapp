@@ -142,6 +142,14 @@ LAPP v1 建议支持：
 - MiniMax 作为语音合成和视频生成模型
 - Kimi coding plan 风格的 `User-Agent` 请求头
 
+## 安全边界
+
+LAPP 不是密钥保险箱。它只是标准化本机 AI 供应商 profile 的发现位置；它不能阻止不可信本机应用或恶意软件读取用户本来就能读取的文件。
+
+这和 `.env`、云厂商凭证、SSH key、npm token 以及其他开发者本机密钥属于同一类风险。`LAPP_HOME` 可以移动 profile 目录，用于工作区或环境隔离，但它不是保密机制。
+
+生产凭证应交给 secret manager、KMS、vault、workload identity、可信 broker、服务端网关、受限 key、轮换和审计机制处理。详见 [安全建议](./security.zh-CN.md)。
+
 ## 参考校验器
 
 本仓库包含一个只读参考校验器：

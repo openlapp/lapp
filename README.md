@@ -142,6 +142,14 @@ The full example includes:
 - MiniMax for text-to-speech and video generation
 - Kimi coding-plan style `User-Agent` headers
 
+## Security Boundary
+
+LAPP is not a secret vault. It standardizes where local AI provider profiles can be found; it does not prevent an untrusted local application or malware from reading files the user can read.
+
+This is the same class of risk as `.env` files, cloud credentials, SSH keys, npm tokens, and other developer-machine secrets. `LAPP_HOME` can move the profile directory for workspace or environment separation, but it is not a secrecy mechanism.
+
+For production credentials, use a proper secret manager, KMS, vault, workload identity, trusted broker, server-side gateway, scoped keys, rotation, and audit controls. See [Security Guidance](./security.en.md).
+
 ## Reference Validator
 
 This repository includes a read-only reference validator:
