@@ -135,8 +135,6 @@ node tools/validator/lapp-validate.mjs examples/en/full/.lapp
 
 The validator checks directory shape, JSON/JSONC parsing, required provider fields, default references, model aliases, and common secret/header footguns. It never modifies `.lapp` files and never calls provider APIs.
 
-LAPP core repo validates profiles. SDKs consume profiles. Managers edit profiles.
-
 ## Documentation
 
 | Topic | English | Chinese |

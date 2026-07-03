@@ -135,8 +135,6 @@ node tools/validator/lapp-validate.mjs examples/zh-CN/full/.lapp
 
 校验器会检查目录结构、JSON/JSONC 解析、provider 必需字段、默认引用、模型别名和常见密钥/请求头风险。它不会修改 `.lapp` 文件，也不会调用供应商 API。
 
-LAPP 主协议库负责校验 profiles。SDK 负责消费 profiles。Manager 负责编辑 profiles。
-
 ## 文档
 
 | 主题 | English | 中文 |
