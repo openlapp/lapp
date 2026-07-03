@@ -1,0 +1,29 @@
+{
+  // LAPP schema version.
+  "schemaVersion": "1.0",
+
+  // Provider ID. It should match the directory name.
+  "id": "deepseek",
+
+  // Display name.
+  "name": "DeepSeek",
+
+  // Protocol. Applications choose an adapter from this value.
+  "protocol": "openai-chat-completions",
+
+  // API base URL. Whether it includes /v1 depends on provider docs.
+  "baseUrl": "https://api.deepseek.com",
+
+  // Authentication. Missing type defaults to bearer.
+  "auth": {
+    "secret": "env://DEEPSEEK_API_KEY"
+  },
+
+  // Optional documentation and console links.
+  "links": {
+    "homepage": "https://www.deepseek.com",
+    "console": "https://platform.deepseek.com",
+    "apiKey": "https://platform.deepseek.com/api_keys",
+    "docs": "https://api-docs.deepseek.com"
+  }
+}

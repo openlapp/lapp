@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0",
+  "id": "minimax",
+  "name": "MiniMax",
+  "enabled": true,
+
+  // This example uses MiniMax for speech and video generation, so it is an extension protocol.
+  "protocol": "minimax-api",
+  "baseUrl": "https://api.minimax.io/v1",
+  "auth": {
+    "type": "bearer",
+    "secret": "env://MINIMAX_API_KEY"
+  },
+  "links": {
+    "homepage": "https://www.minimax.io",
+    "console": "https://platform.minimax.io",
+    "docs": "https://platform.minimax.io/docs",
+    "models": "https://platform.minimax.io/docs/guides/models-intro"
+  }
+}

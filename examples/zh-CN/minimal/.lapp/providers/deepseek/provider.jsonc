@@ -1,0 +1,29 @@
+{
+  // LAPP schema 版本。
+  "schemaVersion": "1.0",
+
+  // 供应商 ID。建议与目录名一致。
+  "id": "deepseek",
+
+  // 显示给用户看的名称。
+  "name": "DeepSeek",
+
+  // 调用协议。应用根据 protocol 选择 adapter。
+  "protocol": "openai-chat-completions",
+
+  // API 基础地址。是否包含 /v1 以供应商文档为准。
+  "baseUrl": "https://api.deepseek.com",
+
+  // 认证配置。type 缺省时视为 bearer。
+  "auth": {
+    "secret": "env://DEEPSEEK_API_KEY"
+  },
+
+  // 可选：文档和控制台链接。
+  "links": {
+    "homepage": "https://www.deepseek.com",
+    "console": "https://platform.deepseek.com",
+    "apiKey": "https://platform.deepseek.com/api_keys",
+    "docs": "https://api-docs.deepseek.com"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+
+  // 默认对话模型。
+  "defaultModel": {
+    "providerId": "deepseek",
+    "model": "deepseek-v4-flash"
+  },
+
+  // 默认向量模型。
+  "defaultEmbeddingModel": {
+    "providerId": "siliconflow",
+    "model": "BAAI/bge-m3"
+  },
+
+  // 默认语音合成模型。
+  "defaultTextToSpeechModel": {
+    "providerId": "minimax",
+    "model": "speech-2.8-turbo"
+  },
+
+  // 默认视频生成模型。
+  "defaultVideoModel": {
+    "providerId": "minimax",
+    "model": "MiniMax-Hailuo-2.3"
+  }
+}

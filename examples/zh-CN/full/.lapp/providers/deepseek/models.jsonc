@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "updatedAt": "2026-07-03T12:00:00+08:00",
+  "models": [
+    {
+      // 官方模型 ID。
+      "id": "deepseek-v4-flash",
+
+      // provider 表示该条目来自供应商模型列表快照。
+      "source": "provider",
+
+      "name": "DeepSeek V4 Flash",
+      "aliases": ["deepseek-v4-flash", "ds-v4-flash"],
+      "type": "chat",
+      "inputModalities": ["text"],
+      "outputModalities": ["text"],
+      "capabilities": ["chat", "stream", "reasoning", "tool-call"],
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "enabled": true,
+      "links": {
+        "docs": "https://api-docs.deepseek.com/",
+        "modelPage": "https://api-docs.deepseek.com/quick_start/pricing"
+      }
+    }
+  ]
+}

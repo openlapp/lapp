@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+
+  // Default chat model.
+  "defaultModel": {
+    "providerId": "deepseek",
+    "model": "deepseek-v4-flash"
+  },
+
+  // Default embedding model.
+  "defaultEmbeddingModel": {
+    "providerId": "siliconflow",
+    "model": "BAAI/bge-m3"
+  },
+
+  // Default text-to-speech model.
+  "defaultTextToSpeechModel": {
+    "providerId": "minimax",
+    "model": "speech-2.8-turbo"
+  },
+
+  // Default video generation model.
+  "defaultVideoModel": {
+    "providerId": "minimax",
+    "model": "MiniMax-Hailuo-2.3"
+  }
+}

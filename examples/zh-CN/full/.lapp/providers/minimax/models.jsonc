@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "1.0",
+  "updatedAt": "2026-07-03T12:00:00+08:00",
+  "models": [
+    {
+      "id": "speech-2.8-turbo",
+      "source": "provider",
+      "name": "Speech 2.8 Turbo",
+      "aliases": ["speech-2.8-turbo", "tts-fast"],
+      "type": "text-to-speech",
+      "inputModalities": ["text"],
+      "outputModalities": ["audio"],
+      "capabilities": ["text-to-speech", "audio-generation"],
+      "enabled": true,
+      "protocol": "minimax-api",
+      "links": {
+        "docs": "https://platform.minimax.io/docs/guides/models-intro"
+      }
+    },
+    {
+      "id": "MiniMax-Hailuo-2.3",
+      "source": "provider",
+      "name": "MiniMax Hailuo 2.3",
+      "aliases": ["hailuo-2.3", "video-default"],
+      "type": "video-generation",
+      "inputModalities": ["text", "image"],
+      "outputModalities": ["video"],
+      "capabilities": ["video-generation"],
+      "enabled": true,
+      "protocol": "minimax-api",
+      "links": {
+        "docs": "https://platform.minimax.io/docs/guides/models-intro"
+      }
+    }
+  ]
+}
