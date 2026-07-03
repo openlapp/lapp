@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "1.0",
+  "id": "deepseek",
+  "protocol": "openai-chat-completions",
+  "auth": {
+    "secret": "env://DEEPSEEK_API_KEY"
+  }
+}

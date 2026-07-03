@@ -125,6 +125,18 @@ The full example includes:
 - MiniMax for text-to-speech and video generation
 - Kimi coding-plan style `User-Agent` headers
 
+## Reference Validator
+
+This repository includes a read-only reference validator:
+
+```bash
+node tools/validator/lapp-validate.mjs examples/en/full/.lapp
+```
+
+The validator checks directory shape, JSON/JSONC parsing, required provider fields, default references, model aliases, and common secret/header footguns. It never modifies `.lapp` files and never calls provider APIs.
+
+LAPP core repo validates profiles. SDKs consume profiles. Managers edit profiles.
+
 ## Documentation
 
 | Topic | English | Chinese |
@@ -134,6 +146,7 @@ The full example includes:
 | Security | [security.en.md](./security.en.md) | [security.zh-CN.md](./security.zh-CN.md) |
 | References | [references.en.md](./references.en.md) | [references.zh-CN.md](./references.zh-CN.md) |
 | Schemas | [schema/](./schema/) | [schema/](./schema/) |
+| Validator | [tools/validator/](./tools/validator/) | [tools/validator/](./tools/validator/) |
 
 ## License
 

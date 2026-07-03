@@ -33,3 +33,17 @@ Applications may let users select `aliases`, but requests to providers should us
 ## Unknown Fields
 
 Applications should safely ignore unknown fields. LAPP is designed to be extensible without breaking older applications.
+
+## Reference Validator
+
+This repository includes a read-only reference validator:
+
+```bash
+node tools/validator/lapp-validate.mjs <path-to-.lapp>
+```
+
+Use it to check generated profiles, examples, and CI fixtures. It validates the directory shape, parses JSON/JSONC, checks required provider fields, verifies `global.json` provider references, reports model alias duplicates, and warns about common secret/header risks.
+
+The validator is intentionally not a manager. It does not initialize profiles, edit files, save API keys, refresh model lists, call provider APIs, or implement fallback behavior.
+
+LAPP core repo validates profiles. SDKs consume profiles. Managers edit profiles.

@@ -33,3 +33,17 @@
 ## 未知字段
 
 应用应安全忽略未知字段。LAPP 的目标是扩展友好，而不是让旧应用因为新字段失效。
+
+## 参考校验器
+
+本仓库包含一个只读参考校验器：
+
+```bash
+node tools/validator/lapp-validate.mjs <path-to-.lapp>
+```
+
+它适合用来检查生成出来的 profiles、示例和 CI fixture。校验器会检查目录结构、解析 JSON/JSONC、检查 provider 必需字段、验证 `global.json` 中的 provider 引用、报告模型 alias 重复，并提示常见密钥和请求头风险。
+
+校验器不是管理器。它不会初始化 profile、不会编辑文件、不会保存 API key、不会刷新模型列表、不会调用供应商 API，也不会实现 fallback 行为。
+
+LAPP 主协议库负责校验 profiles。SDK 负责消费 profiles。Manager 负责编辑 profiles。
