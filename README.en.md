@@ -71,8 +71,10 @@ The smallest useful LAPP profile is just one provider:
 {
   "schemaVersion": "1.0",
   "id": "deepseek",
-  "protocol": "openai-chat-completions",
   "baseUrl": "https://api.deepseek.com",
+  "protocols": [
+    "openai-chat-completions"
+  ],
   "auth": {
     "secret": "env://DEEPSEEK_API_KEY"
   }
@@ -99,7 +101,7 @@ A minimal LAPP v1 application starts by scanning:
 ~/.lapp/providers/*/provider.json
 ```
 
-For each provider, it reads `id`, `protocol`, `baseUrl`, and `auth.secret`, then reads the sibling `models.json` for model discovery. `global.json` is optional; it stores user or environment defaults, not the model list itself.
+For each provider, it reads `id`, `baseUrl`, `protocols`, and `auth.secret`, then reads the sibling `models.json` for model discovery. Older profiles may still use a single `protocol` string; applications should treat it as a one-item `protocols` list. `global.json` is optional; it stores user or environment defaults, not the model list itself.
 
 ## Directory Layout
 
@@ -127,6 +129,8 @@ LAPP v1 recommends support for:
 - `anthropic-messages`
 
 Other protocols can be added as extension strings, such as `gemini-generate-content`, `ollama`, or `minimax-api`.
+
+A provider may support more than one protocol through `protocols[]`. Protocol order is meaningful: the first item is the preferred fallback protocol when a gateway or application cannot use the inbound/native protocol directly.
 
 ## Examples
 

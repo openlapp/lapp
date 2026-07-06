@@ -65,8 +65,10 @@ Extended protocols may use custom strings, such as `gemini-generate-content`, `o
 {
   "schemaVersion": "1.0",
   "id": "deepseek",
-  "protocol": "openai-chat-completions",
   "baseUrl": "https://api.deepseek.com",
+  "protocols": [
+    "openai-chat-completions"
+  ],
   "auth": {
     "secret": "env://DEEPSEEK_API_KEY"
   }
@@ -79,11 +81,58 @@ Fields:
 - `id`: required, should match the directory name.
 - `name`: optional display name.
 - `enabled`: optional, defaults to `true`.
-- `protocol`: required adapter identifier.
 - `baseUrl`: required provider API base URL. Applications must not auto-append `/v1`.
+- `protocols`: required list of protocol adapters supported by this provider. Items may be protocol strings or protocol objects. Order is meaningful: the first item is the preferred protocol when an application or gateway must choose a fallback target.
 - `links`: optional homepage, console, docs, and API key links.
 - `auth`: optional authentication configuration.
 - `requestHeaders`: optional non-secret static request headers, such as a provider-required `User-Agent`.
+
+The common form is a string:
+
+```json
+{
+  "protocols": ["openai-chat-completions", "anthropic-messages"]
+}
+```
+
+Use an object only when a protocol needs its own settings:
+
+```json
+{
+  "protocols": [
+    "openai-chat-completions",
+    {
+      "id": "anthropic-messages",
+      "baseUrl": "https://api.example.com"
+    }
+  ]
+}
+```
+
+Protocol object fields:
+
+- `id`: required protocol identifier, such as `openai-chat-completions`, `openai-responses`, or `anthropic-messages`.
+- `baseUrl`: optional protocol-specific API base URL. If omitted, the provider-level `baseUrl` applies.
+
+Compatibility: older profiles may contain a single `protocol` string instead of `protocols`. Applications should treat:
+
+```json
+{
+  "protocol": "openai-chat-completions"
+}
+```
+
+as:
+
+```json
+{
+  "protocols": [
+    "openai-chat-completions"
+  ]
+}
+```
+
+New profiles should prefer `protocols`.
 
 `auth.secret` support levels:
 

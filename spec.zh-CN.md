@@ -65,8 +65,10 @@ LAPP v1 建议优先支持：
 {
   "schemaVersion": "1.0",
   "id": "deepseek",
-  "protocol": "openai-chat-completions",
   "baseUrl": "https://api.deepseek.com",
+  "protocols": [
+    "openai-chat-completions"
+  ],
   "auth": {
     "secret": "env://DEEPSEEK_API_KEY"
   }
@@ -79,11 +81,58 @@ LAPP v1 建议优先支持：
 - `id`：必需，建议与目录名一致。
 - `name`：可选，展示名称。
 - `enabled`：可选，缺省视为 `true`。
-- `protocol`：必需，应用据此选择 adapter。
 - `baseUrl`：必需，供应商 API 基础地址。应用不得自动追加 `/v1`。
+- `protocols`：必需，供应商支持的协议 adapter 列表。条目可以是协议字符串，也可以是协议对象。顺序有意义：当应用或网关需要选择 fallback 目标协议时，第一个协议是首选协议。
 - `links`：可选，官网、控制台、文档、API Key 链接。
 - `auth`：可选，认证配置。
 - `requestHeaders`：可选，非密钥静态请求头，例如特定供应商要求的 `User-Agent`。
+
+常规形态直接使用字符串：
+
+```json
+{
+  "protocols": ["openai-chat-completions", "anthropic-messages"]
+}
+```
+
+只有某个协议需要自己的设置时，才使用对象：
+
+```json
+{
+  "protocols": [
+    "openai-chat-completions",
+    {
+      "id": "anthropic-messages",
+      "baseUrl": "https://api.example.com"
+    }
+  ]
+}
+```
+
+协议对象字段：
+
+- `id`：必需，协议标识，例如 `openai-chat-completions`、`openai-responses` 或 `anthropic-messages`。
+- `baseUrl`：可选，该协议专用的 API 基础地址。未提供时使用 provider 级 `baseUrl`。
+
+兼容规则：旧 profile 可以继续使用单个 `protocol` 字符串。应用应把：
+
+```json
+{
+  "protocol": "openai-chat-completions"
+}
+```
+
+视为：
+
+```json
+{
+  "protocols": [
+    "openai-chat-completions"
+  ]
+}
+```
+
+新的 profile 应优先使用 `protocols`。
 
 `auth.secret` 支持：
 

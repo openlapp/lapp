@@ -71,8 +71,10 @@ LAPP 把这些共享 profile 数据放在一个可预测的本机目录里，让
 {
   "schemaVersion": "1.0",
   "id": "deepseek",
-  "protocol": "openai-chat-completions",
   "baseUrl": "https://api.deepseek.com",
+  "protocols": [
+    "openai-chat-completions"
+  ],
   "auth": {
     "secret": "env://DEEPSEEK_API_KEY"
   }
@@ -99,7 +101,7 @@ LAPP 把这些共享 profile 数据放在一个可预测的本机目录里，让
 ~/.lapp/providers/*/provider.json
 ```
 
-对每个 provider，应用读取 `id`、`protocol`、`baseUrl` 和 `auth.secret`，再读取同目录的 `models.json` 来发现模型。`global.json` 是可选的默认偏好文件，用来保存用户或环境的默认选择，不是模型清单本身。
+对每个 provider，应用读取 `id`、`baseUrl`、`protocols` 和 `auth.secret`，再读取同目录的 `models.json` 来发现模型。旧 profile 仍可使用单个 `protocol` 字符串；应用应把它视为只有一项的 `protocols` 列表。`global.json` 是可选的默认偏好文件，用来保存用户或环境的默认选择，不是模型清单本身。
 
 ## 目录结构
 
@@ -127,6 +129,8 @@ LAPP v1 建议支持：
 - `anthropic-messages`
 
 其他协议可以作为扩展字符串添加，例如 `gemini-generate-content`、`ollama` 或 `minimax-api`。
+
+一个 provider 可以通过 `protocols[]` 声明多个支持协议。协议顺序有意义：当网关或应用无法直接使用入口/原生协议时，第一项是首选 fallback 协议。
 
 ## 示例
 
