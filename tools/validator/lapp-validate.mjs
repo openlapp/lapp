@@ -178,6 +178,62 @@ function validateRequestHeaders(headers, location, reporter) {
   }
 }
 
+function normalizeProtocols(provider, location, reporter) {
+  const protocols = [];
+
+  if (Array.isArray(provider.protocols)) {
+    if (provider.protocols.length === 0) {
+      reporter.add("ERROR", location, "protocols must contain at least one protocol");
+    }
+    for (const [index, entry] of provider.protocols.entries()) {
+      const entryLocation = `${location}#protocols[${index}]`;
+      if (typeof entry === "string") {
+        if (entry.trim() === "") {
+          reporter.add("ERROR", entryLocation, "protocol string must not be empty");
+          continue;
+        }
+        protocols.push({ id: entry, location: entryLocation });
+        continue;
+      }
+      if (!isObject(entry)) {
+        reporter.add("ERROR", entryLocation, "protocol entry must be a string or object");
+        continue;
+      }
+      if (typeof entry.id !== "string" || entry.id.trim() === "") {
+        reporter.add("ERROR", entryLocation, "protocol object is missing required field \"id\"");
+        continue;
+      }
+      if (typeof entry.baseUrl === "string" && entry.baseUrl.endsWith("/")) {
+        reporter.add("WARN", entryLocation, "protocol baseUrl should not end with /");
+      }
+      validateRequestHeaders(entry.requestHeaders, entryLocation, reporter);
+      protocols.push({ id: entry.id, location: entryLocation });
+    }
+  } else if (typeof provider.protocol === "string") {
+    if (provider.protocol.trim() === "") {
+      reporter.add("ERROR", location, "protocol must not be empty");
+    } else {
+      protocols.push({ id: provider.protocol, location: `${location}#protocol` });
+    }
+  } else {
+    reporter.add("ERROR", location, "missing required field \"protocols\" (or legacy \"protocol\")");
+  }
+
+  const seen = new Set();
+  for (const protocol of protocols) {
+    if (seen.has(protocol.id)) {
+      reporter.add("ERROR", protocol.location, `duplicate protocol "${protocol.id}"`);
+      continue;
+    }
+    seen.add(protocol.id);
+    if (!CORE_PROTOCOLS.has(protocol.id)) {
+      reporter.add("WARN", protocol.location, `protocol "${protocol.id}" is not a core LAPP v1 protocol`);
+    }
+  }
+
+  return protocols;
+}
+
 function validateProvider(providerDir, root, reporter) {
   const dirName = path.basename(providerDir);
   const providerFile = findConfigFile(providerDir, "provider");
@@ -190,11 +246,12 @@ function validateProvider(providerDir, root, reporter) {
   if (!provider) return null;
 
   const location = relative(root, providerFile);
-  for (const field of ["id", "protocol", "baseUrl"]) {
+  for (const field of ["id", "baseUrl"]) {
     if (typeof provider[field] !== "string" || provider[field].trim() === "") {
       reporter.add("ERROR", location, `missing required field "${field}"`);
     }
   }
+  normalizeProtocols(provider, location, reporter);
 
   if (typeof provider.id === "string" && provider.id !== dirName) {
     reporter.add("WARN", location, `provider id "${provider.id}" does not match directory "${dirName}"`);
@@ -202,10 +259,6 @@ function validateProvider(providerDir, root, reporter) {
 
   if (typeof provider.baseUrl === "string" && provider.baseUrl.endsWith("/")) {
     reporter.add("WARN", location, "baseUrl should not end with /");
-  }
-
-  if (typeof provider.protocol === "string" && !CORE_PROTOCOLS.has(provider.protocol)) {
-    reporter.add("WARN", location, `protocol "${provider.protocol}" is not a core LAPP v1 protocol`);
   }
 
   validateSecret(provider.auth?.secret, location, reporter);

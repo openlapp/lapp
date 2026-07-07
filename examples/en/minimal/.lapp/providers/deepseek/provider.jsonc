@@ -8,8 +8,8 @@
   // Display name.
   "name": "DeepSeek",
 
-  // Protocol. Applications choose an adapter from this value.
-  "protocol": "openai-chat-completions",
+  // Protocols. Applications choose adapters from this list.
+  "protocols": ["openai-chat-completions"],
 
   // API base URL. Whether it includes /v1 depends on provider docs.
   "baseUrl": "https://api.deepseek.com",

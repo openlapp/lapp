@@ -12,7 +12,7 @@
   "enabled": true,
 
   // DeepSeek official API follows an OpenAI Chat Completions compatible shape.
-  "protocol": "openai-chat-completions",
+  "protocols": ["openai-chat-completions"],
 
   // API base URL. Applications must not auto-append /v1.
   "baseUrl": "https://api.deepseek.com",

@@ -5,7 +5,7 @@
 1. Locate the LAPP root directory. If `LAPP_HOME` is set, use it first. Otherwise default to `~/.lapp`.
 2. Scan `providers/*/provider.json`.
 3. Skip providers with `enabled: false`.
-4. Create usable provider entries for supported `protocol` values.
+4. Create usable provider entries for supported `protocols` values. If only legacy `protocol` exists, treat it as a one-item `protocols` list.
 5. If `models.json` exists, load model lists and aliases.
 6. If `global.json` exists, load default models.
 
@@ -15,7 +15,7 @@ A minimal implementation only needs:
 
 - `provider.json`
 - `id`
-- `protocol`
+- `protocols` (and legacy `protocol`)
 - `baseUrl`
 - `auth.secret`
 - plain secret strings and `env://`

@@ -12,7 +12,7 @@
   "enabled": true,
 
   // DeepSeek 官方 API 采用 OpenAI Chat Completions 兼容形态。
-  "protocol": "openai-chat-completions",
+  "protocols": ["openai-chat-completions"],
 
   // API 基础地址。应用不得自动追加 /v1。
   "baseUrl": "https://api.deepseek.com",

@@ -34,7 +34,7 @@ node tools/validator/lapp-validate.mjs examples/en/full/.lapp
 
 ## Scope
 
-The validator checks directory shape, JSON/JSONC parsing, required provider fields, global provider references, common security footguns, and basic model alias consistency.
+The validator checks directory shape, JSON/JSONC parsing, required provider fields, `protocols` entries, global provider references, common security footguns, and basic model alias consistency. Legacy single-field `protocol` profiles are still accepted as a one-item protocol list.
 
 It does not:
 

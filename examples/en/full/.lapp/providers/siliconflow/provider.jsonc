@@ -3,7 +3,7 @@
   "id": "siliconflow",
   "name": "SiliconFlow",
   "enabled": true,
-  "protocol": "openai-chat-completions",
+  "protocols": ["openai-chat-completions"],
   "baseUrl": "https://api.siliconflow.cn/v1",
   "auth": {
     "type": "bearer",

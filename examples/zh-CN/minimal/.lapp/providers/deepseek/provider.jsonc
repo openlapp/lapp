@@ -8,8 +8,8 @@
   // 显示给用户看的名称。
   "name": "DeepSeek",
 
-  // 调用协议。应用根据 protocol 选择 adapter。
-  "protocol": "openai-chat-completions",
+  // 调用协议。应用根据 protocols 选择 adapter。
+  "protocols": ["openai-chat-completions"],
 
   // API 基础地址。是否包含 /v1 以供应商文档为准。
   "baseUrl": "https://api.deepseek.com",

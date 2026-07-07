@@ -5,7 +5,7 @@
   "enabled": true,
 
   // This example uses MiniMax for speech and video generation, so it is an extension protocol.
-  "protocol": "minimax-api",
+  "protocols": ["minimax-api"],
   "baseUrl": "https://api.minimax.io/v1",
   "auth": {
     "type": "bearer",

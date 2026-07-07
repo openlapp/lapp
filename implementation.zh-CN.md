@@ -5,7 +5,7 @@
 1. 定位 LAPP 根目录。设置了 `LAPP_HOME` 时优先使用它；否则默认使用 `~/.lapp`。
 2. 扫描 `providers/*/provider.json`。
 3. 跳过 `enabled: false` 的供应商。
-4. 对支持的 `protocol` 创建可用供应商条目。
+4. 对支持的 `protocols` 创建可用供应商条目。若只有旧 `protocol` 字段，应视为只有一项的 `protocols` 列表。
 5. 如果存在 `models.json`，加载模型清单和 alias。
 6. 如果存在 `global.json`，读取默认模型。
 
@@ -15,7 +15,7 @@
 
 - `provider.json`
 - `id`
-- `protocol`
+- `protocols`（以及旧 `protocol`）
 - `baseUrl`
 - `auth.secret`
 - 明文 secret 和 `env://`

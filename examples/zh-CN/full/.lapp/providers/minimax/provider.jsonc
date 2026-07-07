@@ -5,7 +5,7 @@
   "enabled": true,
 
   // MiniMax 在本示例中用于语音和视频生成，属于扩展协议。
-  "protocol": "minimax-api",
+  "protocols": ["minimax-api"],
   "baseUrl": "https://api.minimax.io/v1",
   "auth": {
     "type": "bearer",
