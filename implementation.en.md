@@ -1,29 +1,26 @@
 # LAPP Application Integration Guidance
 
+This guide is for application authors. It describes how to read a LAPP profile at runtime and what to implement first. It stays short on purpose: the [specification](./spec.en.md) defines the field shape; this document defines the read order and minimum behavior.
+
 ## Read Order
 
 1. Locate the LAPP root directory. If `LAPP_HOME` is set, use it first. Otherwise default to `~/.lapp`.
-2. Scan `providers/*/provider.json`.
-3. Skip providers with `enabled: false`.
-4. Create usable provider entries for supported `protocols` values. If only legacy `protocol` exists, treat it as a one-item `protocols` list.
-5. If `models.json` exists, load model lists and aliases.
-6. If `global.json` exists, load default models.
+2. Read `manifest.json` if present; treat it as informational only.
+3. Scan `providers/*/provider.json` (or `.jsonc`).
+4. Skip providers with `enabled: false`.
+5. Build the supported protocol set from `protocols`. Order is meaningful: the first entry is the preferred fallback protocol.
+6. If `models.json` exists, load the model list, aliases, and capabilities. A model-level `protocol` must reference one of the provider's declared `protocols`; if omitted, use the preferred protocol.
+7. If `global.json` exists, load default model references. Resolve `model` against the referenced provider's `id` or `aliases`.
 
 ## Minimal Implementation
 
 A minimal implementation only needs:
 
-- `provider.json`
-- `id`
-- `protocols` (and legacy `protocol`)
-- `baseUrl`
-- `auth.secret`
+- `provider.json` with `id`, `baseUrl`, `protocols`, and `auth.secret`
 - plain secret strings and `env://`
 - `models.json` for model discovery
 
-`global.json`, `links`, and `requestHeaders` are enhanced behavior.
-
-For a minimal useful profile, include `models.json` with at least one model entry. `global.json` is optional and only stores defaults; applications can still pick a model from `models.json` without it.
+`global.json`, `links`, `requestHeaders`, `auth.type`, and `manifest.json` are enhanced behavior. A minimal useful profile includes `models.json` with at least one model entry. `global.json` is optional and only stores defaults; applications can still pick a model from `models.json` without it.
 
 ## LAPP_HOME
 
@@ -35,7 +32,7 @@ LAPP_HOME=/path/to/.lapp
 
 It points to the LAPP root, not to a provider directory. It is useful for CI, containers, workspaces, managed environments, and portable setups.
 
-`LAPP_HOME` is not a security boundary. It should not be described as a way to hide secrets.
+`LAPP_HOME` is not a security boundary. It should not be described as a way to hide secrets. See [Security Guidance](./security.en.md).
 
 ## URL Handling
 
@@ -57,6 +54,6 @@ This repository includes a read-only reference validator:
 node tools/validator/lapp-validate.mjs <path-to-.lapp>
 ```
 
-Use it to check generated profiles, examples, and CI fixtures. It validates the directory shape, parses JSON/JSONC, checks required provider fields, verifies `global.json` provider references, reports model alias duplicates, and warns about common secret/header risks.
+Use it to check generated profiles, examples, and CI fixtures. It validates the directory shape, parses JSON/JSONC, checks required provider fields, verifies `protocols` entries and model-level `protocol` references, verifies `global.json` provider references, reports model alias duplicates, and warns about common secret/header risks.
 
 The validator is intentionally not a manager. It does not initialize profiles, edit files, save API keys, refresh model lists, call provider APIs, or implement fallback behavior.

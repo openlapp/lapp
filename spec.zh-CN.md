@@ -59,7 +59,7 @@ LAPP v1 建议优先支持：
 
 ## provider.json
 
-`provider.json` 描述供应商本身。最小示例：
+`provider.json` 描述供应商本身。支持 `.json` 或 `.jsonc`（带注释的 JSON）。最小示例：
 
 ```json
 {
@@ -82,7 +82,7 @@ LAPP v1 建议优先支持：
 - `name`：可选，展示名称。
 - `enabled`：可选，缺省视为 `true`。
 - `baseUrl`：必需，供应商 API 基础地址。应用不得自动追加 `/v1`。
-- `protocols`：必需，供应商支持的协议 adapter 列表。条目可以是协议字符串，也可以是协议对象。顺序有意义：当应用或网关需要选择 fallback 目标协议时，第一个协议是首选协议。
+- `protocols`：必需，供应商支持的协议 adapter 列表。顺序有意义：当应用或网关需要选择 fallback 目标协议时，第一个协议是首选协议。条目可以是协议字符串（常规形态），也可以是协议对象。
 - `links`：可选，官网、控制台、文档、API Key 链接。
 - `auth`：可选，认证配置。
 - `requestHeaders`：可选，非密钥静态请求头，例如特定供应商要求的 `User-Agent`。
@@ -95,7 +95,7 @@ LAPP v1 建议优先支持：
 }
 ```
 
-只有某个协议需要自己的设置时，才使用对象：
+只有某个协议需要自己的设置（如该协议专用的基础地址）时，才使用协议对象：
 
 ```json
 {
@@ -113,26 +113,14 @@ LAPP v1 建议优先支持：
 
 - `id`：必需，协议标识，例如 `openai-chat-completions`、`openai-responses` 或 `anthropic-messages`。
 - `baseUrl`：可选，该协议专用的 API 基础地址。未提供时使用 provider 级 `baseUrl`。
+- `requestHeaders`：可选，规则同 provider 级字段。在该协议下与 provider 级 `requestHeaders` 合并，同名键以协议级为准。
 
-兼容规则：旧 profile 可以继续使用单个 `protocol` 字符串。应用应把：
+`auth` 字段：
 
-```json
-{
-  "protocol": "openai-chat-completions"
-}
-```
-
-视为：
-
-```json
-{
-  "protocols": [
-    "openai-chat-completions"
-  ]
-}
-```
-
-新的 profile 应优先使用 `protocols`。
+- `type`：可选，常见值包括 `bearer`（缺省）、`api-key`、`none`。未知值原样透传。
+- `secret`：凭证，支持级别见下文。
+- `header`：可选，当 `type` 不是 `bearer` 时携带密钥的请求头名，缺省值取决于供应商协议。
+- `queryParam`：可选，使用 query 鉴权的供应商所用的查询参数名。
 
 `auth.secret` 支持：
 
@@ -144,20 +132,25 @@ LAPP v1 建议优先支持：
 
 ## models.json
 
-`models.json` 描述供应商下的模型。`id` 是真实调用名，`aliases` 是本地短别名。
+`models.json` 描述供应商下的模型，支持 `.json` 或 `.jsonc`。一个模型条目包含这些字段：
 
-模型级 `source`：
-
-- `provider`：来自供应商模型列表。刷新时如果远端不存在，应用可以移除或禁用。
-- `manual`：用户或应用手动维护。刷新时不得静默覆盖或删除。
-
-`type` 表示模型大类，常见值包括 `chat`、`embedding`、`rerank`、`image-generation`、`image-edit`、`video-generation`、`audio-generation`、`speech-to-text`、`text-to-speech`。
-
-`inputModalities` 和 `outputModalities` 描述输入输出形态，常见值包括 `text`、`image`、`audio`、`video`、`file`。
+- `id`：必需，真实调用名。
+- `name`：可选，展示名称。
+- `aliases`：可选，本地短别名。应用可以允许用户选择 alias，但向供应商发请求时必须使用 `id`。
+- `source`：条目来源。
+  - `provider`：来自供应商模型列表。刷新时如果远端不存在，应用可以移除或禁用。
+  - `manual`：用户或应用手动维护。刷新时不得静默覆盖或删除。
+- `type`：模型大类，常见值包括 `chat`、`embedding`、`rerank`、`image-generation`、`image-edit`、`video-generation`、`audio-generation`、`speech-to-text`、`text-to-speech`。
+- `inputModalities` 和 `outputModalities`：输入输出形态，常见值包括 `text`、`image`、`audio`、`video`、`file`。
+- `capabilities`：可选能力标签，常见值包括 `chat`、`stream`、`reasoning`、`tool-call`、`vision`、`coding`、`embedding`、`text-to-speech`、`audio-generation`、`video-generation`。
+- `protocol`：可选，调用该模型时使用的供应商协议。未提供时应用应使用供应商首选（第一个）协议。提供时必须引用该供应商 `protocols` 中已声明的协议之一。
+- `contextWindow` 和 `maxOutputTokens`：可选整数限制。
+- `enabled`：可选，缺省视为 `true`。
+- `links` 和 `metadata`：可选参考链接和自由元数据。
 
 ## global.json
 
-`global.json` 保存应用没有自己偏好时可参考的默认模型。它是可选文件，不能替代 `models.json`：
+`global.json` 保存应用没有自己偏好时可参考的默认模型。它是可选文件，支持 `.json` 或 `.jsonc`，不能替代 `models.json`：
 
 ```json
 {
@@ -165,10 +158,35 @@ LAPP v1 建议优先支持：
   "defaultModel": {
     "providerId": "deepseek",
     "model": "deepseek-v4-flash"
+  },
+  "defaultEmbeddingModel": {
+    "providerId": "siliconflow",
+    "model": "BAAI/bge-m3"
+  },
+  "defaultTextToSpeechModel": {
+    "providerId": "minimax",
+    "model": "speech-2.8-turbo"
+  },
+  "defaultVideoModel": {
+    "providerId": "minimax",
+    "model": "MiniMax-Hailuo-2.3"
   }
 }
 ```
 
+可识别的默认键为 `defaultModel`、`defaultEmbeddingModel`、`defaultImageModel`、`defaultTextToSpeechModel` 和 `defaultVideoModel`，均为可选。每个键是 `{ providerId, model }` 引用；`model` 可以命中该供应商下某个模型的 `id` 或 alias。
+
 `model` 永远是字符串。LAPP 不解析模型 ID 中的 `/`。
 
 没有 `global.json` 的 profile 仍然合法。应用可以从 `models.json` 中选择模型，或让用户自己选择。
+
+## manifest.json
+
+`manifest.json` 是可选的根目录元信息，描述整份 profile 集合，支持 `.json` 或 `.jsonc`。应用应仅将其视为信息性内容，不影响供应商发现。字段：
+
+- `schemaVersion`：建议提供，当前为 `1.0`。
+- `name`：可选，profile 集合的可读名称。
+- `createdAt` 和 `updatedAt`：可选时间戳（ISO 8601）。
+- `license`：可选，profile 集合的授权说明。
+
+没有 `manifest.json` 的 profile 仍然合法。

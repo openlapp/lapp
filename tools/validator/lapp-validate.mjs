@@ -209,16 +209,11 @@ function normalizeProtocols(provider, location, reporter) {
       validateRequestHeaders(entry.requestHeaders, entryLocation, reporter);
       protocols.push({ id: entry.id, location: entryLocation });
     }
-  } else if (typeof provider.protocol === "string") {
-    if (provider.protocol.trim() === "") {
-      reporter.add("ERROR", location, "protocol must not be empty");
-    } else {
-      protocols.push({ id: provider.protocol, location: `${location}#protocol` });
-    }
   } else {
-    reporter.add("ERROR", location, "missing required field \"protocols\" (or legacy \"protocol\")");
+    reporter.add("ERROR", location, "missing required field \"protocols\"");
   }
 
+  // ponytail: O(n) dedup + core-protocol check in one pass; fine for small per-provider lists.
   const seen = new Set();
   for (const protocol of protocols) {
     if (seen.has(protocol.id)) {
@@ -251,7 +246,7 @@ function validateProvider(providerDir, root, reporter) {
       reporter.add("ERROR", location, `missing required field "${field}"`);
     }
   }
-  normalizeProtocols(provider, location, reporter);
+  const protocols = normalizeProtocols(provider, location, reporter);
 
   if (typeof provider.id === "string" && provider.id !== dirName) {
     reporter.add("WARN", location, `provider id "${provider.id}" does not match directory "${dirName}"`);
@@ -265,6 +260,8 @@ function validateProvider(providerDir, root, reporter) {
   validateRequestHeaders(provider.requestHeaders, location, reporter);
   reporter.ok(location, "provider parsed");
 
+  const protocolIds = new Set(protocols.map((protocol) => protocol.id));
+
   return {
     id: typeof provider.id === "string" && provider.id.trim() ? provider.id : dirName,
     dirName,
@@ -274,6 +271,7 @@ function validateProvider(providerDir, root, reporter) {
     modelIds: new Set(),
     modelAliases: new Set(),
     modelCount: 0,
+    protocolIds,
   };
 }
 
@@ -325,6 +323,12 @@ function validateModels(providerRecord, root, reporter) {
         } else {
           aliasOwner.set(alias, model.id);
         }
+      }
+    }
+
+    if (typeof model.protocol === "string" && model.protocol.trim() !== "") {
+      if (!providerRecord.protocolIds.has(model.protocol)) {
+        reporter.add("ERROR", modelLocation, `model protocol "${model.protocol}" is not declared in provider protocols`);
       }
     }
   }

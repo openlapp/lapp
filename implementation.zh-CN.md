@@ -1,29 +1,26 @@
 # LAPP 应用接入建议
 
+本指南面向应用作者，描述运行时如何读取 LAPP profile 以及应该先实现哪些行为。内容刻意保持简短：[规范](./spec.zh-CN.md) 定义字段形状，本文档只定义读取顺序和最小行为。
+
 ## 读取顺序
 
 1. 定位 LAPP 根目录。设置了 `LAPP_HOME` 时优先使用它；否则默认使用 `~/.lapp`。
-2. 扫描 `providers/*/provider.json`。
-3. 跳过 `enabled: false` 的供应商。
-4. 对支持的 `protocols` 创建可用供应商条目。若只有旧 `protocol` 字段，应视为只有一项的 `protocols` 列表。
-5. 如果存在 `models.json`，加载模型清单和 alias。
-6. 如果存在 `global.json`，读取默认模型。
+2. 如果存在 `manifest.json`，读取它，但仅视为信息性内容。
+3. 扫描 `providers/*/provider.json`（或 `.jsonc`）。
+4. 跳过 `enabled: false` 的供应商。
+5. 根据 `protocols` 构建支持的协议集合。顺序有意义：第一项是首选 fallback 协议。
+6. 如果存在 `models.json`，加载模型清单、alias 和能力。模型级 `protocol` 必须引用该供应商 `protocols` 中已声明的协议；未提供时使用首选协议。
+7. 如果存在 `global.json`，读取默认模型引用。`model` 应在对应供应商的 `id` 或 `aliases` 中解析。
 
 ## 最小实现
 
 最小实现只需要支持：
 
-- `provider.json`
-- `id`
-- `protocols`（以及旧 `protocol`）
-- `baseUrl`
-- `auth.secret`
+- `provider.json`，包含 `id`、`baseUrl`、`protocols` 和 `auth.secret`
 - 明文 secret 和 `env://`
 - 用于模型发现的 `models.json`
 
-`global.json`、`links`、`requestHeaders` 属于增强体验。
-
-最小可用 profile 应包含至少一个模型条目的 `models.json`。`global.json` 是可选的默认偏好文件；没有它，应用仍然可以从 `models.json` 中选择模型。
+`global.json`、`links`、`requestHeaders`、`auth.type` 和 `manifest.json` 属于增强体验。最小可用 profile 应包含至少一个模型条目的 `models.json`。`global.json` 是可选的默认偏好文件；没有它，应用仍然可以从 `models.json` 中选择模型。
 
 ## LAPP_HOME
 
@@ -35,7 +32,7 @@ LAPP_HOME=/path/to/.lapp
 
 它指向 LAPP 根目录，不是 provider 目录。它适合 CI、容器、工作区、受管环境和便携配置。
 
-`LAPP_HOME` 不是安全边界，不应该被描述成隐藏密钥的办法。
+`LAPP_HOME` 不是安全边界，不应该被描述成隐藏密钥的办法。详见[安全建议](./security.zh-CN.md)。
 
 ## URL 处理
 
@@ -57,6 +54,6 @@ LAPP_HOME=/path/to/.lapp
 node tools/validator/lapp-validate.mjs <path-to-.lapp>
 ```
 
-它适合用来检查生成出来的 profiles、示例和 CI fixture。校验器会检查目录结构、解析 JSON/JSONC、检查 provider 必需字段、验证 `global.json` 中的 provider 引用、报告模型 alias 重复，并提示常见密钥和请求头风险。
+它适合用来检查生成出来的 profiles、示例和 CI fixture。校验器会检查目录结构、解析 JSON/JSONC、检查 provider 必需字段、验证 `protocols` 条目和模型级 `protocol` 引用、验证 `global.json` 中的 provider 引用、报告模型 alias 重复，并提示常见密钥和请求头风险。
 
 校验器不是管理器。它不会初始化 profile、不会编辑文件、不会保存 API key、不会刷新模型列表、不会调用供应商 API，也不会实现 fallback 行为。

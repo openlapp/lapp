@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "id": "deepseek",
-  "protocol": "openai-chat-completions",
+  "protocols": ["openai-chat-completions"],
   "baseUrl": "https://api.deepseek.com",
   "auth": {
     "secret": "env://DEEPSEEK_API_KEY",

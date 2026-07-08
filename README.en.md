@@ -101,7 +101,7 @@ A minimal LAPP v1 application starts by scanning:
 ~/.lapp/providers/*/provider.json
 ```
 
-For each provider, it reads `id`, `baseUrl`, `protocols`, and `auth.secret`, then reads the sibling `models.json` for model discovery. Older profiles may still use a single `protocol` string; applications should treat it as a one-item `protocols` list. `global.json` is optional; it stores user or environment defaults, not the model list itself.
+For each provider, it reads `id`, `baseUrl`, `protocols`, and `auth.secret`, then reads the sibling `models.json` for model discovery (a model-level `protocol` must match one of the provider's declared `protocols`). `global.json` is optional; it stores user or environment defaults, not the model list itself.
 
 ## Directory Layout
 
@@ -162,7 +162,7 @@ This repository includes a read-only reference validator:
 node tools/validator/lapp-validate.mjs examples/en/full/.lapp
 ```
 
-The validator checks directory shape, JSON/JSONC parsing, required provider fields, default references, model aliases, and common secret/header footguns. It never modifies `.lapp` files and never calls provider APIs.
+The validator checks directory shape, JSON/JSONC parsing, required provider fields, `protocols` and model-level `protocol` references, default references, model aliases, and common secret/header footguns. It never modifies `.lapp` files and never calls provider APIs.
 
 ## Documentation
 

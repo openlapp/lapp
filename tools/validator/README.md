@@ -34,7 +34,7 @@ node tools/validator/lapp-validate.mjs examples/en/full/.lapp
 
 ## Scope
 
-The validator checks directory shape, JSON/JSONC parsing, required provider fields, `protocols` entries, global provider references, common security footguns, and basic model alias consistency. Legacy single-field `protocol` profiles are still accepted as a one-item protocol list.
+The validator checks directory shape, JSON/JSONC parsing, required provider fields, `protocols` entries, model-level `protocol` references, global provider references, common security footguns, and basic model alias consistency.
 
 It does not:
 
@@ -44,3 +44,11 @@ It does not:
 - refresh provider model lists
 - call provider APIs
 - manage fallback or routing behavior
+
+## Self-test
+
+A tiny self-test runs the validator over the examples and the invalid fixtures and asserts the exit codes:
+
+```bash
+node tools/validator/lapp-validate.selftest.mjs
+```

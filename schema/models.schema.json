@@ -38,7 +38,7 @@
           "contextWindow": { "type": "integer", "minimum": 0 },
           "maxOutputTokens": { "type": "integer", "minimum": 0 },
           "enabled": { "type": "boolean" },
-          "protocol": { "type": "string" },
+          "protocol": { "type": "string", "minLength": 1, "description": "Provider protocol to use for this model; must reference one of the provider's declared protocols" },
           "links": {
             "type": "object",
             "additionalProperties": { "type": "string" }
