@@ -10,6 +10,7 @@
 <p align="center">
   <a href="./README.md">English</a> ·
   <a href="./spec.zh-CN.md">规范</a> ·
+  <a href="./USER_AGREEMENT.zh-CN.md">用户协议</a> ·
   <a href="./examples/zh-CN/full/.lapp">示例</a>
 </p>
 
@@ -140,6 +141,7 @@ Reference validator 先执行版本化 JSON Schema 校验，再执行跨文件�
 | Specification / 规范 | [spec.en.md](./spec.en.md) | [spec.zh-CN.md](./spec.zh-CN.md) |
 | Implementation / 实现 | [implementation.en.md](./implementation.en.md) | [implementation.zh-CN.md](./implementation.zh-CN.md) |
 | Security / 安全 | [security.en.md](./security.en.md) | [security.zh-CN.md](./security.zh-CN.md) |
+| 用户协议与风险披露 | [USER_AGREEMENT.en.md](./USER_AGREEMENT.en.md) | [USER_AGREEMENT.zh-CN.md](./USER_AGREEMENT.zh-CN.md) |
 | 示例来源 | [references.en.md](./references.en.md) | [references.zh-CN.md](./references.zh-CN.md) |
 | Schemas | [schema/](./schema/) | [schema/](./schema/) |
 | Validator / 校验器 | [tools/validator/](./tools/validator/) | [tools/validator/](./tools/validator/) |

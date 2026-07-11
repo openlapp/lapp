@@ -11,6 +11,7 @@
   <a href="./README.zh-CN.md">简体中文</a> ·
   <a href="./README.en.md">English</a> ·
   <a href="./spec.en.md">Specification</a> ·
+  <a href="./USER_AGREEMENT.en.md">User Agreement</a> ·
   <a href="./examples/en/full/.lapp">Example</a>
 </p>
 
@@ -141,6 +142,7 @@ The reference validator performs versioned JSON Schema validation followed by cr
 | Specification | [spec.en.md](./spec.en.md) | [spec.zh-CN.md](./spec.zh-CN.md) |
 | Implementation | [implementation.en.md](./implementation.en.md) | [implementation.zh-CN.md](./implementation.zh-CN.md) |
 | Security | [security.en.md](./security.en.md) | [security.zh-CN.md](./security.zh-CN.md) |
+| User agreement and risk disclosure | [USER_AGREEMENT.en.md](./USER_AGREEMENT.en.md) | [USER_AGREEMENT.zh-CN.md](./USER_AGREEMENT.zh-CN.md) |
 | Example sources | [references.en.md](./references.en.md) | [references.zh-CN.md](./references.zh-CN.md) |
 | Schemas | [schema/](./schema/) | [schema/](./schema/) |
 | Validator | [tools/validator/](./tools/validator/) | [tools/validator/](./tools/validator/) |

@@ -53,3 +53,22 @@ Run:
 npm test
 node tools/validator/lapp-validate.mjs examples/en/full/.lapp
 ```
+
+## Distributing the user agreement
+
+Installers and application packages that incorporate the LAPP user agreement
+must ship both `USER_AGREEMENT.en.md` and `USER_AGREEMENT.zh-CN.md`.
+Distribution alone is not proof of acceptance.
+
+Before installation or first use, a GUI or native installer that relies on the
+agreement should identify the Distributor and effective terms, show the key
+credential, data-transfer, Provider-cost, AI-output, and tool-action risks,
+offer the complete offline text, use an unselected affirmative consent control,
+allow cancellation, and retain the accepted version and time where lawful.
+Material changes should be presented again. A Distributor that processes
+personal data must provide a separate privacy notice.
+
+Library package managers should include the files in the installed artifact but
+should not use a `postinstall` script to simulate consent. Every Distributor
+must obtain legal review for its entity, jurisdiction, privacy practices, and
+installer flow before treating the template as binding.
