@@ -112,7 +112,7 @@ LAPP v1 只支持两种 secret：
 其他 URI scheme（包括 `file://` 和 `keychain://`）在 v1 中非法。校验器应对明文给出警告，因为明文更容易泄漏。Secret 值绝不能写入诊断、模型数据或日志。
 
 HTTP header 名必须是合法 token，值不能含 CR 或 LF。`requestHeaders` 不得包含凭据，包括 Authorization、代理认证、Cookie 或 API-key 头；认证只能配置在 `auth` 中。
-`requestHeaders` 也不得以大小写不同的形式重复 header auth 配置的名称。
+`requestHeaders` 名称按大小写不敏感规则必须唯一，也不得重复 header auth 配置的名称。
 
 ### 模型发现
 

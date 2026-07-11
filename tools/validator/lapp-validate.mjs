@@ -142,8 +142,15 @@ function validateSecret(auth, location, reporter) {
 
 function validateHeaders(headers, auth, location, reporter) {
   if (!headers) return;
+  const seen = new Map();
   for (const name of Object.keys(headers)) {
     const lower = name.toLowerCase();
+    const previous = seen.get(lower);
+    if (previous) {
+      reporter.add("ERROR", location, "DUPLICATE_REQUEST_HEADER", `requestHeaders contains case-insensitive duplicates "${previous}" and "${name}"`);
+    } else {
+      seen.set(lower, name);
+    }
     const normalized = lower.replace(/[^a-z0-9]/g, "");
     if (SENSITIVE_HEADERS.has(lower)
       || normalized.endsWith("apikey")

@@ -112,7 +112,7 @@ LAPP v1 supports two secret forms:
 Other URI schemes, including `file://` and `keychain://`, are invalid in v1. Validators should warn about plaintext because it is easier to leak. Secret values must never be written to diagnostics, model data, or logs.
 
 HTTP header names must be valid HTTP tokens and values must not contain CR or LF. `requestHeaders` must not contain credentials, including `Authorization`, proxy authorization, cookies, or API-key headers. Authentication belongs only in `auth`.
-`requestHeaders` must not duplicate the configured header-auth name, case-insensitively.
+`requestHeaders` names must be unique case-insensitively and must not duplicate the configured header-auth name.
 
 ### Model discovery
 
