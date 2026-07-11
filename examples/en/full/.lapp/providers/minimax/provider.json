@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "id": "minimax",
+  "name": "MiniMax",
+  "enabled": true,
+  "baseUrl": "https://api.minimax.io/v1",
+  "protocols": ["minimax-api"],
+  "auth": {
+    "type": "bearer",
+    "secret": "env://MINIMAX_API_KEY"
+  }
+}

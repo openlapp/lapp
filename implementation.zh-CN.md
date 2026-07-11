@@ -1,59 +1,55 @@
-# LAPP 应用接入建议
+# LAPP v1 应用接入
 
-本指南面向应用作者，描述运行时如何读取 LAPP profile 以及应该先实现哪些行为。内容刻意保持简短：[规范](./spec.zh-CN.md) 定义字段形状，本文档只定义读取顺序和最小行为。
+应用可以直接实现 LAPP、调用 SDK，或调用提供稳定 JSON 输出的 CLI。三种方式完成同一件事：读取本地 Provider Registry，解析模型和凭据，然后由应用直接调用上游 API。
 
-## 读取顺序
+## 最小读取流程
 
-1. 定位 LAPP 根目录。设置了 `LAPP_HOME` 时优先使用它；否则默认使用 `~/.lapp`。
-2. 如果存在 `manifest.json`，读取它，但仅视为信息性内容。
-3. 扫描 `providers/*/provider.json`（或 `.jsonc`）。
-4. 跳过 `enabled: false` 的供应商。
-5. 根据 `protocols` 构建支持的协议集合。顺序有意义：第一项是首选 fallback 协议。
-6. 如果存在 `models.json`，加载模型清单、alias 和能力。模型级 `protocol` 必须引用该供应商 `protocols` 中已声明的协议；未提供时使用首选协议。
-7. 如果存在 `global.json`，读取默认模型引用。`model` 应在对应供应商的 `id` 或 `aliases` 中解析。
+1. 优先解析 `LAPP_HOME`，否则使用 `~/.lapp`。
+2. 扫描 `providers/` 的直接子目录。
+3. 从每个目录精确读取 UTF-8 JSON 格式的 `provider.json` 和 `models.json`。
+4. 使用 LAPP 1.0 Schema 校验每份文档。
+5. 执行目录身份、URL 安全、协议子集、model/alias 唯一性和 defaults 等语义校验。
+6. 在不解析凭据、不访问网络的前提下列出启用的本地模型。
+7. 选择模型时，只解析出一个 canonical model、一个应用支持的协议和一种认证方式。
+8. 使用应用自己的上游 adapter 直接发送请求。
 
-## 最小实现
+不要读取 JSONC、`manifest.json`、legacy `protocol` 或 protocol object。不要猜测 `/v1`、模型列表 URL、模型能力或认证行为。
 
-最小实现只需要支持：
+## 数据边界
 
-- `provider.json`，包含 `id`、`baseUrl`、`protocols` 和 `auth.secret`
-- 明文 secret 和 `env://`
-- 用于模型发现的 `models.json`
+原始输入、已校验数据和 diagnostics 应分离：
 
-`global.json`、`links`、`requestHeaders`、`auth.type` 和 `manifest.json` 属于增强体验。最小可用 profile 应包含至少一个模型条目的 `models.json`。`global.json` 是可选的默认偏好文件；没有它，应用仍然可以从 `models.json` 中选择模型。
-
-## LAPP_HOME
-
-`LAPP_HOME` 是可选的根目录覆盖：
-
-```bash
-LAPP_HOME=/path/to/.lapp
+```text
+JSON 字节 → Schema 校验 → 语义校验 → normalized profile
 ```
 
-它指向 LAPP 根目录，不是 provider 目录。它适合 CI、容器、工作区、受管环境和便携配置。
+只有 normalized profile 能进入请求代码。文件路径和 diagnostics 是加载元数据，不是 profile 字段。错误应标识文件和稳定规则，但绝不能包含解析后的 secret。
 
-`LAPP_HOME` 不是安全边界，不应该被描述成隐藏密钥的办法。详见[安全建议](./security.zh-CN.md)。
+## 模型列表与连接解析
 
-## URL 处理
+模型列表是对 `models.json` 的纯读取。可以按 provider 和 enabled 状态过滤，但不得隐式刷新远端数据。
 
-应用应自行处理 URL 拼接中的斜杠。`baseUrl` 是否包含 `/v1` 取决于供应商文档，应用不得自动追加。
+连接解析必须遵循规范中的算法。Alias 输入最终归一成 canonical model ID；协议是有序候选中应用支持的第一项。凭据缺失、target disabled、alias 歧义或协议无交集都必须报错。
 
-## 模型 alias
+## 显式远端刷新
 
-应用可以允许用户选择 `aliases`，但向供应商发请求时应使用模型 `id`。如果 `global.json` 中的 `model` 命中 alias，应用应解析为同 provider 下的真实 `id`。
+只有配置 `modelDiscovery` 的 provider 可以远端刷新。必须精确使用配置的 URL，要求与 `baseUrl` 同源，拒绝重定向，完整校验响应，并返回内存中的建议结果。
 
-## 未知字段
+Apply 使用只追加合并：保留全部现有条目和字段，把新 ID 排序后追加，不猜测能力，也不删除模型。CLI 应在写入前展示建议结果。
 
-应用应安全忽略未知字段。LAPP 的目标是扩展友好，而不是让旧应用因为新字段失效。
+## 写入
 
-## 参考校验器
+不得把非法 ID 清洗成文件名。每次写入或删除前都要解析目标路径，并检查它属于 root。文件有变化时，在同目录写临时文件、flush，再原子 rename；未变化文件不重写。
 
-本仓库包含一个只读参考校验器：
+LAPP v1 假定单写入者。在真实并发需求出现前，不增加锁、daemon、数据库、缓存、迁移层或 profile 级事务。
+
+## 一致性
+
+使用本仓库的版本化 Schema 和 fixtures 作为共同合同。合规实现必须与 reference validator 对 fixtures 的接受和拒绝结果一致；可以增加 diagnostics，但不能接受 canonical validator 拒绝的 profile。
+
+运行：
 
 ```bash
-node tools/validator/lapp-validate.mjs <path-to-.lapp>
+npm test
+node tools/validator/lapp-validate.mjs examples/zh-CN/full/.lapp
 ```
-
-它适合用来检查生成出来的 profiles、示例和 CI fixture。校验器会检查目录结构、解析 JSON/JSONC、检查 provider 必需字段、验证 `protocols` 条目和模型级 `protocol` 引用、验证 `global.json` 中的 provider 引用、报告模型 alias 重复，并提示常见密钥和请求头风险。
-
-校验器不是管理器。它不会初始化 profile、不会编辑文件、不会保存 API key、不会刷新模型列表、不会调用供应商 API，也不会实现 fallback 行为。

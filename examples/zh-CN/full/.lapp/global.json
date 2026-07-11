@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0",
+  "defaults": {
+    "chat": {
+      "providerId": "deepseek",
+      "modelId": "deepseek-v4-flash"
+    },
+    "embedding": {
+      "providerId": "siliconflow",
+      "modelId": "BAAI/bge-m3"
+    },
+    "text-to-speech": {
+      "providerId": "minimax",
+      "modelId": "speech-2.8-turbo"
+    },
+    "video": {
+      "providerId": "minimax",
+      "modelId": "MiniMax-Hailuo-2.3"
+    }
+  }
+}

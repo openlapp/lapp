@@ -1,59 +1,55 @@
-# LAPP Application Integration Guidance
+# LAPP v1 Application Integration
 
-This guide is for application authors. It describes how to read a LAPP profile at runtime and what to implement first. It stays short on purpose: the [specification](./spec.en.md) defines the field shape; this document defines the read order and minimum behavior.
+An application may implement LAPP directly, use an SDK, or call a CLI with stable JSON output. All three paths implement the same job: read a local provider registry, resolve a model and credential, then call the upstream API directly.
 
-## Read Order
+## Minimum read path
 
-1. Locate the LAPP root directory. If `LAPP_HOME` is set, use it first. Otherwise default to `~/.lapp`.
-2. Read `manifest.json` if present; treat it as informational only.
-3. Scan `providers/*/provider.json` (or `.jsonc`).
-4. Skip providers with `enabled: false`.
-5. Build the supported protocol set from `protocols`. Order is meaningful: the first entry is the preferred fallback protocol.
-6. If `models.json` exists, load the model list, aliases, and capabilities. A model-level `protocol` must reference one of the provider's declared `protocols`; if omitted, use the preferred protocol.
-7. If `global.json` exists, load default model references. Resolve `model` against the referenced provider's `id` or `aliases`.
+1. Resolve `LAPP_HOME`, otherwise use `~/.lapp`.
+2. Scan directories directly under `providers/`.
+3. Read exactly `provider.json` and `models.json` from each directory as UTF-8 JSON.
+4. Validate each document against the LAPP 1.0 Schema.
+5. Apply semantic checks: directory identity, URL safety, protocol subsets, model/alias uniqueness, and defaults.
+6. Expose enabled local models without resolving credentials or accessing the network.
+7. On model selection, resolve one canonical model, one supported protocol, and exactly one auth mechanism.
+8. Use the application's own upstream adapter to send the request directly.
 
-## Minimal Implementation
+Do not read JSONC, `manifest.json`, legacy `protocol`, or protocol objects. Do not guess `/v1`, model-list URLs, model capabilities, or auth behavior.
 
-A minimal implementation only needs:
+## Data boundaries
 
-- `provider.json` with `id`, `baseUrl`, `protocols`, and `auth.secret`
-- plain secret strings and `env://`
-- `models.json` for model discovery
+Keep raw input, validated data, and diagnostics separate:
 
-`global.json`, `links`, `requestHeaders`, `auth.type`, and `manifest.json` are enhanced behavior. A minimal useful profile includes `models.json` with at least one model entry. `global.json` is optional and only stores defaults; applications can still pick a model from `models.json` without it.
-
-## LAPP_HOME
-
-`LAPP_HOME` is an optional root-directory override:
-
-```bash
-LAPP_HOME=/path/to/.lapp
+```text
+JSON bytes → schema validation → semantic validation → normalized profile
 ```
 
-It points to the LAPP root, not to a provider directory. It is useful for CI, containers, workspaces, managed environments, and portable setups.
+Only normalized profiles should reach request code. File paths and diagnostics are load metadata, not profile fields. Errors must identify a file and stable rule without including resolved secret values.
 
-`LAPP_HOME` is not a security boundary. It should not be described as a way to hide secrets. See [Security Guidance](./security.en.md).
+## Model listing and connection resolution
 
-## URL Handling
+Model listing is a pure read of `models.json`. It should support filtering by provider and enabled state, but must not refresh remote data implicitly.
 
-Applications should normalize slashes when joining URLs. Whether `baseUrl` includes `/v1` depends on the provider documentation. Applications must not auto-append `/v1`.
+Connection resolution follows the normative algorithm in the specification. Alias input becomes a canonical model ID. Protocol selection is the first ordered candidate supported by the application. Missing credentials, disabled targets, ambiguity, and no protocol intersection are errors.
 
-## Model Aliases
+## Explicit remote refresh
 
-Applications may let users select `aliases`, but requests to providers should use the model `id`. If `global.json` uses an alias, resolve it within the same provider.
+Only providers with `modelDiscovery` can refresh remotely. Use the configured URL exactly, require the same origin as `baseUrl`, reject redirects, validate the complete response, and return an in-memory proposal.
 
-## Unknown Fields
+Apply uses append-only merge semantics: preserve existing entries and fields, append new IDs in sorted order, and never infer capabilities or remove models. A CLI should show the proposal before writing.
 
-Applications should safely ignore unknown fields. LAPP is designed to be extensible without breaking older applications.
+## Writes
 
-## Reference Validator
+Never turn an invalid ID into a filename. Resolve and check every target path against the root before writing or deleting. For a changed file, write a temporary sibling, flush it, and atomically rename it. Do not rewrite unchanged files.
 
-This repository includes a read-only reference validator:
+LAPP v1 assumes one writer. Do not add a lock, daemon, database, cache, migration layer, or profile-wide transaction until a real concurrency requirement exists.
+
+## Conformance
+
+Use the versioned schemas and the fixtures in this repository as the common contract. A conforming implementation must agree with the reference validator on fixture acceptance and rejection; it may add diagnostics but may not accept a profile the canonical validator rejects.
+
+Run:
 
 ```bash
-node tools/validator/lapp-validate.mjs <path-to-.lapp>
+npm test
+node tools/validator/lapp-validate.mjs examples/en/full/.lapp
 ```
-
-Use it to check generated profiles, examples, and CI fixtures. It validates the directory shape, parses JSON/JSONC, checks required provider fields, verifies `protocols` entries and model-level `protocol` references, verifies `global.json` provider references, reports model alias duplicates, and warns about common secret/header risks.
-
-The validator is intentionally not a manager. It does not initialize profiles, edit files, save API keys, refresh model lists, call provider APIs, or implement fallback behavior.

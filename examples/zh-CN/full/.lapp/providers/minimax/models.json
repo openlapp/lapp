@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "models": [
+    {
+      "id": "speech-2.8-turbo",
+      "name": "Speech 2.8 Turbo",
+      "aliases": ["tts-fast"],
+      "protocols": ["minimax-api"],
+      "type": "text-to-speech",
+      "inputModalities": ["text"],
+      "outputModalities": ["audio"],
+      "capabilities": ["text-to-speech", "audio-generation"],
+      "enabled": true
+    },
+    {
+      "id": "MiniMax-Hailuo-2.3",
+      "name": "MiniMax Hailuo 2.3",
+      "aliases": ["hailuo-2.3", "video-default"],
+      "protocols": ["minimax-api"],
+      "type": "video-generation",
+      "inputModalities": ["text", "image"],
+      "outputModalities": ["video"],
+      "capabilities": ["video-generation"],
+      "enabled": true
+    }
+  ]
+}

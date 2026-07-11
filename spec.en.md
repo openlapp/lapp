@@ -1,192 +1,197 @@
 # LAPP v1 Specification
 
-LAPP stands for Local AI Provider Profiles. It defines a lightweight directory convention that lets applications discover AI providers already configured on the user's machine.
+LAPP (Local AI Provider Profiles) is a local provider registry for AI applications. It lets an application discover configured models, resolve the selected model to an upstream URL and credential, and then communicate with that upstream directly.
 
-## Threat Model
+LAPP is a file convention. It does not define a daemon, gateway, proxy, routing service, billing system, or remote control plane. Applications may read the files themselves or use an SDK or CLI that implements this specification.
 
-LAPP is not a secret vault or a security sandbox. It standardizes provider profile discovery; it does not protect secrets from malware or untrusted local applications capable of reading the user's files.
+## Root and files
 
-If an application directly calls a provider API, it must eventually obtain usable credentials. Allowing an application to read a usable LAPP profile should therefore be treated as granting that application permission to use the referenced provider credentials.
-
-LAPP can reduce accidental secret sprawl by recommending `env://` and `keychain://` references, and by warning about plain secrets. It cannot make an untrusted local application unable to read a key while still allowing it to call a provider directly. That stronger model needs a trusted broker, local gateway, server-side proxy, OS permission system, or provider-issued scoped and short-lived credentials. Those are outside the LAPP v1 core.
-
-## Root Directory
-
-The default LAPP root is:
-
-```text
-~/.lapp
-```
-
-Applications may also support `LAPP_HOME` as a root-directory override:
-
-```bash
-LAPP_HOME=/path/to/.lapp
-```
-
-`LAPP_HOME` points to the LAPP root directory, not to a provider directory. If it is set, applications should read that location first. If it is not set, applications should fall back to `~/.lapp`.
-
-`LAPP_HOME` is a location override, not a secrecy mechanism. It is useful for workspaces, CI, containers, portable setups, managed environments, and users who do not want to store profiles at the default path. It does not protect secrets from software that can read environment variables or local files.
-
-LAPP v1 is mainly intended for personal local use and development environments. Production systems may reuse the LAPP profile shape, but should not treat local files as their credential boundary. Production deployments should use a secret manager, KMS, vault, workload identity, trusted broker, or server-side gateway for credential control.
-
-## Directory Layout
+The default root is `~/.lapp`. An application may support `LAPP_HOME`; when set, it is the complete root path and takes precedence over the default.
 
 ```text
 ~/.lapp/
-├── manifest.json
 ├── providers/
-│   └── {providerId}/
+│   └── <providerId>/
 │       ├── provider.json
 │       └── models.json
 └── global.json
 ```
 
-- `providers/{providerId}/provider.json`: required provider configuration.
-- `providers/{providerId}/models.json`: provider model list; recommended for the minimal useful profile.
-- `global.json`: optional global default models.
-- `manifest.json`: optional root metadata.
+- `providers/` contains one directory per provider.
+- Every provider directory contains both `provider.json` and `models.json`.
+- `global.json` is optional.
+- LAPP v1 files are standard UTF-8 JSON. JSONC and alternate extensions are not supported.
+- `manifest.json` has no LAPP v1 semantics.
 
-## Core Protocol Values
+All three documents require `"schemaVersion": "1.0"`. Implementations must reject unsupported versions. Core objects reject unknown properties; implementation-specific data belongs under `extensions`.
 
-LAPP v1 recommends support for:
+The schemas in [`schema/`](./schema/) define the document shapes. The rules below add cross-file and security constraints that JSON Schema alone cannot express.
 
-- `openai-chat-completions`
-- `openai-responses`
-- `anthropic-messages`
+## Identifiers
 
-Extended protocols may use custom strings, such as `gemini-generate-content`, `ollama`, or `minimax-api`. Applications should report unsupported protocols instead of crashing.
+A provider ID must match:
+
+```text
+^[a-z0-9][a-z0-9._-]{0,63}$
+```
+
+It must not be a Windows reserved device name (`CON`, `PRN`, `AUX`, `NUL`, `COM1`–`COM9`, or `LPT1`–`LPT9`, case-insensitive), including a reserved basename followed by an extension, and must not end with a dot. The provider directory name must exactly equal `provider.id`. Implementations must reject invalid IDs; they must not sanitize IDs into filesystem names.
+
+A model ID is the exact string sent upstream. It may contain `/`, but must not be empty, whitespace-only, or contain control characters. Within one provider, every model ID and alias shares one namespace and must be unique.
 
 ## provider.json
-
-`provider.json` describes a provider. It supports `.json` or `.jsonc` (JSON with comments). Minimal example:
 
 ```json
 {
   "schemaVersion": "1.0",
   "id": "deepseek",
+  "name": "DeepSeek",
+  "enabled": true,
   "baseUrl": "https://api.deepseek.com",
-  "protocols": [
-    "openai-chat-completions"
-  ],
+  "protocols": ["openai-chat-completions"],
   "auth": {
+    "type": "bearer",
     "secret": "env://DEEPSEEK_API_KEY"
+  },
+  "modelDiscovery": {
+    "protocol": "openai-models",
+    "url": "https://api.deepseek.com/models"
   }
 }
 ```
 
 Fields:
 
-- `schemaVersion`: recommended, currently `1.0`.
-- `id`: required, should match the directory name.
-- `name`: optional display name.
-- `enabled`: optional, defaults to `true`.
-- `baseUrl`: required provider API base URL. Applications must not auto-append `/v1`.
-- `protocols`: required list of protocol adapters supported by this provider. Order is meaningful: the first item is the preferred protocol when an application or gateway must choose a fallback target. Items may be protocol strings (the common form) or protocol objects.
-- `links`: optional homepage, console, docs, and API key links.
-- `auth`: optional authentication configuration.
-- `requestHeaders`: optional non-secret static request headers, such as a provider-required `User-Agent`.
+- `schemaVersion`, `id`, `baseUrl`, `protocols`, and `auth` are required.
+- `name` is an optional display name.
+- `enabled` defaults to `true`.
+- `baseUrl` is the upstream API base URL. OpenAI-compatible implementations must not guess or insert a version segment; protocol-defined endpoint paths still apply.
+- `protocols` is a non-empty ordered list of protocol IDs.
+- `requestHeaders` contains optional non-secret static HTTP headers.
+- `modelDiscovery` enables explicit remote model refresh.
+- `extensions` contains namespaced implementation-specific data.
 
-The common form uses plain strings:
+### Protocol selection
+
+Core chat protocol IDs are:
+
+- `openai-chat-completions`
+- `openai-responses`
+- `anthropic-messages`
+
+Other syntactically valid IDs may be stored. An implementation must return an unsupported-protocol error when it cannot execute one; it must not silently reinterpret it.
+
+Protocol order is preference order. Given the protocols supported by an application, select the first model candidate present in that supported set. If the application supplies no supported set, select the first candidate. Model candidates come from `model.protocols` when present, otherwise from `provider.protocols`.
+
+### URLs
+
+`baseUrl` and `modelDiscovery.url` must be absolute URLs without credentials or fragments. Remote URLs must use HTTPS. HTTP is permitted only for loopback hosts (`localhost`, `127.0.0.0/8`, and `::1`).
+
+When a protocol defines an endpoint below `baseUrl`, implementations must append it to the URL pathname, not to the serialized URL string, and preserve any configured query parameters.
+
+When `modelDiscovery` is present, its URL must have the same origin as `baseUrl`. Authenticated requests must use `redirect: error` or equivalent; credentials must never follow a redirect.
+
+### Authentication
+
+`auth` is exactly one of:
 
 ```json
-{
-  "protocols": ["openai-chat-completions", "anthropic-messages"]
-}
+{ "type": "none" }
+{ "type": "bearer", "secret": "env://API_KEY" }
+{ "type": "header", "name": "X-Custom-Key", "secret": "env://API_KEY" }
+{ "type": "query", "name": "api_key", "secret": "env://API_KEY" }
 ```
 
-Use a protocol object only when that protocol needs its own settings, such as a protocol-specific base URL:
+No auth type has an implicit fallback. A bearer secret becomes `Authorization: Bearer <value>`; header and query auth use the configured `name` without adding a prefix.
+
+LAPP v1 supports two secret forms:
+
+- `env://NAME`, where `NAME` is a valid environment-variable name;
+- a non-empty plaintext string.
+
+Other URI schemes, including `file://` and `keychain://`, are invalid in v1. Validators should warn about plaintext because it is easier to leak. Secret values must never be written to diagnostics, model data, or logs.
+
+HTTP header names must be valid HTTP tokens and values must not contain CR or LF. `requestHeaders` must not contain credentials, including `Authorization`, proxy authorization, cookies, or API-key headers. Authentication belongs only in `auth`.
+`requestHeaders` must not duplicate the configured header-auth name, case-insensitively.
+
+### Model discovery
+
+`modelDiscovery.protocol` is either `openai-models` or `anthropic-models`. Its URL is explicit; implementations must not guess or append a models path.
+
+Remote refresh is an explicit operation. It must:
+
+1. resolve this provider's auth;
+2. request the configured same-origin URL without following redirects;
+3. reject non-2xx, malformed, or incomplete responses;
+4. normalize returned model IDs and optional display names;
+5. return a proposed next profile without writing files automatically.
+
+A valid empty response makes no changes. Refresh appends previously unknown model IDs, sorted by ID, after existing entries. It may fill a missing local display name, but must not overwrite any existing local field and must never remove a local model.
+
+## models.json
 
 ```json
 {
-  "protocols": [
-    "openai-chat-completions",
+  "schemaVersion": "1.0",
+  "models": [
     {
-      "id": "anthropic-messages",
-      "baseUrl": "https://api.example.com"
+      "id": "deepseek-v4-flash",
+      "name": "DeepSeek V4 Flash",
+      "aliases": ["ds-v4-flash"],
+      "protocols": ["openai-chat-completions"],
+      "type": "chat",
+      "inputModalities": ["text"],
+      "outputModalities": ["text"],
+      "capabilities": ["chat", "stream", "tool-call"],
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "enabled": true
     }
   ]
 }
 ```
 
-Protocol object fields:
+Only `id` is required on a model. `enabled` defaults to `true`. `name`, `aliases`, `type`, modalities, capabilities, positive token limits, and `extensions` are descriptive local data.
 
-- `id`: required protocol identifier, such as `openai-chat-completions`, `openai-responses`, or `anthropic-messages`.
-- `baseUrl`: optional protocol-specific API base URL. If omitted, the provider-level `baseUrl` applies.
-- `requestHeaders`: optional, same rules as the provider-level field. Merges with (and overrides matching keys from) the provider-level `requestHeaders` for this protocol.
+When `protocols` is present, it must be a non-empty subset of the provider's protocols. When absent, the model inherits the provider's ordered protocols.
 
-`auth` fields:
-
-- `type`: optional. Common values include `bearer` (default), `api-key`, and `none`. Unknown values are passed through.
-- `secret`: the credential. See support levels below.
-- `header`: optional, the header name to carry the secret when `type` is not `bearer`. Defaults depend on the provider protocol.
-- `queryParam`: optional, the query parameter name to carry the secret for providers that use query auth.
-
-`auth.secret` support levels:
-
-- MUST: plain strings and `env://NAME`
-- SHOULD: `keychain://namespace/item`
-- MAY: `file://path`
-
-`requestHeaders` must not be used for `Authorization` or API keys.
-
-## models.json
-
-`models.json` describes models under a provider. It supports `.json` or `.jsonc`. A model entry has these fields:
-
-- `id`: required, the real invocation name.
-- `name`: optional display name.
-- `aliases`: optional local short names. Applications may let users select an alias, but requests to the provider must use `id`.
-- `source`: where the entry came from.
-  - `provider`: from the provider model list. On refresh, applications may remove or disable models no longer returned remotely.
-  - `manual`: manually maintained by the user or application. Refreshes must not silently overwrite or delete it.
-- `type`: model category. Common values include `chat`, `embedding`, `rerank`, `image-generation`, `image-edit`, `video-generation`, `audio-generation`, `speech-to-text`, and `text-to-speech`.
-- `inputModalities` and `outputModalities`: input and output forms. Common values include `text`, `image`, `audio`, `video`, and `file`.
-- `capabilities`: optional ability tags. Common values include `chat`, `stream`, `reasoning`, `tool-call`, `vision`, `coding`, `embedding`, `text-to-speech`, `audio-generation`, and `video-generation`.
-- `protocol`: optional, the provider protocol to use for this model. If omitted, applications should use the provider's preferred (first) protocol. When set, it must reference one of the provider's declared `protocols`.
-- `contextWindow` and `maxOutputTokens`: optional integer limits.
-- `enabled`: optional, defaults to `true`.
-- `links` and `metadata`: optional reference links and free-form metadata.
+`models.json` is the local authoritative catalog. Remote provider results are discovery input, not a second source of truth. Applications must not infer capabilities from a model name.
 
 ## global.json
-
-`global.json` stores defaults applications can use when they do not have their own preference. It is optional, supports `.json` or `.jsonc`, and does not replace `models.json`:
 
 ```json
 {
   "schemaVersion": "1.0",
-  "defaultModel": {
-    "providerId": "deepseek",
-    "model": "deepseek-v4-flash"
-  },
-  "defaultEmbeddingModel": {
-    "providerId": "siliconflow",
-    "model": "BAAI/bge-m3"
-  },
-  "defaultTextToSpeechModel": {
-    "providerId": "minimax",
-    "model": "speech-2.8-turbo"
-  },
-  "defaultVideoModel": {
-    "providerId": "minimax",
-    "model": "MiniMax-Hailuo-2.3"
+  "defaults": {
+    "chat": {
+      "providerId": "deepseek",
+      "modelId": "deepseek-v4-flash"
+    }
   }
 }
 ```
 
-Recognized default keys are `defaultModel`, `defaultEmbeddingModel`, `defaultImageModel`, `defaultTextToSpeechModel`, and `defaultVideoModel`. All are optional. Each is a `{ providerId, model }` reference; `model` may match a model `id` or an alias within that provider.
+`defaults` maps an operation name to a canonical provider and model ID. Operation names are lowercase identifiers such as `chat`, `embedding`, or `text-to-speech`.
 
-`model` is always a string. LAPP does not parse `/` inside model IDs.
+A default must reference an existing enabled provider and enabled model by canonical ID. Aliases must not be stored in `global.json`. A missing `global.json` is valid.
 
-A profile without `global.json` is still valid. Applications can select from `models.json` or let the user choose a model.
+## Connection resolution
 
-## manifest.json
+Given either `{ providerId, model }` or a default operation name, an implementation must:
 
-`manifest.json` is optional root metadata about the profile collection. It supports `.json` or `.jsonc`. Applications should treat it as informational only; it does not change provider discovery. Fields:
+1. resolve the default, if requested;
+2. require an existing enabled provider;
+3. resolve `model` against the provider's model IDs and aliases, rejecting ambiguity;
+4. require an enabled model and normalize aliases to its canonical ID;
+5. select a protocol using the ordered intersection rule above;
+6. validate the URL and static headers;
+7. resolve the configured secret and construct exactly one auth mechanism;
+8. return the canonical provider ID, model ID, protocol, base URL, headers, and in-memory auth value.
 
-- `schemaVersion`: recommended, currently `1.0`.
-- `name`: optional human-readable profile collection name.
-- `createdAt` and `updatedAt`: optional timestamps (ISO 8601).
-- `license`: optional license note for the profile collection.
+Reading the model list must not resolve secrets or access the network. Only connection resolution and explicit refresh need credentials.
 
-A profile without `manifest.json` is still valid.
+## Validation and writes
+
+Implementations must validate each file against its versioned schema before applying semantic rules. Every write and delete must resolve the target path and prove it remains inside the selected LAPP root. File updates should use a temporary file in the same directory followed by an atomic rename.
+
+LAPP v1 assumes one writer at a time. It does not define locking, multi-file transactions, merge behavior, or migration from earlier drafts.

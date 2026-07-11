@@ -1,36 +1,49 @@
+import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import assert from "node:assert";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const V = "tools/validator/lapp-validate.mjs";
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const VALIDATOR = "tools/validator/lapp-validate.mjs";
+let assertions = 0;
 
-function run(target) {
+function run(args) {
   try {
-    execFileSync(process.execPath, [V, target], { encoding: "utf8" });
+    execFileSync(process.execPath, [VALIDATOR, ...args], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: "pipe",
+    });
     return 0;
   } catch (error) {
-    return error.status ?? 2; // child exits with code on nonzero exit
+    return error.status ?? 2;
   }
 }
 
-// Valid examples clean up to exit 0.
+function expectExit(args, expected, message) {
+  assertions += 1;
+  assert.equal(run(args), expected, message);
+}
+
 const valid = [
   "examples/en/minimal/.lapp",
+  "examples/en/full/.lapp",
   "examples/zh-CN/minimal/.lapp",
+  "examples/zh-CN/full/.lapp",
+  "tools/validator/fixtures/valid/auth-forms/.lapp",
 ];
-for (const v of valid) assert.equal(run(v), 0, `${v} should pass (exit 0)`);
+for (const target of valid) expectExit([target], 0, `${target} should pass`);
 
-assert.notEqual(run("examples/en/full/.lapp"), 1, "full example should be WARN-only, not ERROR");
+const invalidRoot = path.join(ROOT, "tools/validator/fixtures/invalid");
+const invalid = fs.readdirSync(invalidRoot, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => `tools/validator/fixtures/invalid/${entry.name}/.lapp`)
+  .sort();
+for (const target of invalid) expectExit([target], 1, `${target} should fail validation without crashing`);
 
-// Invalid fixtures all exit 1.
-const invalid = [
-  "tools/validator/fixtures/invalid/bad-global-reference/.lapp",
-  "tools/validator/fixtures/invalid/bad-jsonc/.lapp",
-  "tools/validator/fixtures/invalid/missing-base-url/.lapp",
-  "tools/validator/fixtures/invalid/bad-model-protocol/.lapp",
-];
-for (const f of invalid) assert.equal(run(f), 1, `${f} should fail (exit 1)`);
+expectExit(["--help"], 0, "--help should succeed");
+expectExit(["--help", "extra"], 2, "--help with extra arguments should be a usage error");
+expectExit(["one", "two"], 2, "extra arguments should be a usage error");
 
-// missing providers dir is also a failure.
-assert.equal(run("tools/validator/fixtures/invalid/missing-providers/.lapp"), 1);
-
-console.log("selftest: ok (11 assertions)");
+console.log(`selftest: ok (${assertions} assertions)`);

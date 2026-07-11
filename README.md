@@ -4,21 +4,13 @@
 
 <h1 align="center">LAPP</h1>
 
-<p align="center">
-  <strong>Local AI Provider Profiles</strong>
-</p>
+<p align="center"><strong>Local AI Provider Profiles</strong></p>
+<p align="center">One local provider registry for AI applications.</p>
 
 <p align="center">
-  A lightweight local provider-profile convention for AI applications.
-</p>
-
-<p align="center">
-  <a href="./README.zh-CN.md">简体中文</a>
-  ·
-  <a href="./README.en.md">English</a>
-  ·
-  <a href="./spec.en.md">Specification</a>
-  ·
+  <a href="./README.zh-CN.md">简体中文</a> ·
+  <a href="./README.en.md">English</a> ·
+  <a href="./spec.en.md">Specification</a> ·
   <a href="./examples/en/full/.lapp">Example</a>
 </p>
 
@@ -30,56 +22,55 @@
 
 ---
 
-LAPP is a tiny file-based convention for sharing AI provider configuration on one machine.
-
-Instead of asking every AI app to configure DeepSeek, Kimi, OpenAI, MiniMax, SiliconFlow, OpenRouter, and other providers again and again, LAPP gives applications a common place to look:
+LAPP lets AI applications reuse the providers, models, endpoints, and credentials already configured for the current user.
 
 ```text
-~/.lapp/
+Direct:  application → LAPP files → upstream API
+SDK:     application → LAPP SDK → upstream API
+CLI:     application → LAPP CLI JSON → upstream API
 ```
 
-LAPP does **not** run a local service, proxy requests, manage billing, enforce fallback, or become another gateway. It only describes what providers and models the user already has.
-
-The default root is `~/.lapp`. Applications may support `LAPP_HOME` as a root-directory override for workspaces, CI, containers, or managed environments. `LAPP_HOME` is a location override, not a secrecy mechanism.
+LAPP is a file convention. It does not run a service, proxy requests, translate protocols, manage billing, or control remote machines.
 
 ## Why
 
-AI applications keep reimplementing the same provider settings page:
-
-- API keys
-- base URLs
-- protocol adapters
-- model IDs and aliases
-- default models
-- model capabilities
-
-LAPP keeps that shared profile data in a predictable local directory so applications can discover it instead of asking users to type it again.
-
-## Minimal Shape
-
-The smallest useful LAPP profile is just one provider:
+Without a shared registry, every AI application asks the user to enter the same API keys, base URLs, model IDs, and defaults again. LAPP puts that information in one predictable directory:
 
 ```text
 ~/.lapp/
-└── providers/
-    └── deepseek/
-        ├── provider.json
-        └── models.json
 ```
+
+Applications may support `LAPP_HOME` as an explicit root override for CI, containers, or managed environments.
+
+## LAPP v1
+
+```text
+~/.lapp/
+├── providers/
+│   └── deepseek/
+│       ├── provider.json
+│       └── models.json
+└── global.json
+```
+
+LAPP v1 uses standard JSON only. Every file has `"schemaVersion": "1.0"`. `provider.json` and `models.json` are required for each provider; `global.json` is optional.
+
+`provider.json`:
 
 ```json
 {
   "schemaVersion": "1.0",
   "id": "deepseek",
   "baseUrl": "https://api.deepseek.com",
-  "protocols": [
-    "openai-chat-completions"
-  ],
+  "protocols": ["openai-chat-completions"],
   "auth": {
+    "type": "bearer",
     "secret": "env://DEEPSEEK_API_KEY"
   }
 }
 ```
+
+`models.json`:
 
 ```json
 {
@@ -87,7 +78,7 @@ The smallest useful LAPP profile is just one provider:
   "models": [
     {
       "id": "deepseek-v4-flash",
-      "source": "manual",
+      "name": "DeepSeek V4 Flash",
       "type": "chat",
       "capabilities": ["chat", "stream"]
     }
@@ -95,74 +86,53 @@ The smallest useful LAPP profile is just one provider:
 }
 ```
 
-A minimal LAPP v1 application starts by scanning:
+`global.json`:
 
-```text
-~/.lapp/providers/*/provider.json
+```json
+{
+  "schemaVersion": "1.0",
+  "defaults": {
+    "chat": {
+      "providerId": "deepseek",
+      "modelId": "deepseek-v4-flash"
+    }
+  }
+}
 ```
 
-For each provider, it reads `id`, `baseUrl`, `protocols`, and `auth.secret`, then reads the sibling `models.json` for model discovery (a model-level `protocol` must match one of the provider's declared `protocols`). `global.json` is optional; it stores user or environment defaults, not the model list itself.
+## Contract
 
-## Directory Layout
+- `models.json` is the local authoritative model catalog.
+- Remote model refresh is explicit, append-only, and never deletes or overwrites local entries.
+- Protocol order is preference order; an application selects the first protocol it supports.
+- Core chat protocol IDs are `openai-chat-completions`, `openai-responses`, and `anthropic-messages`.
+- Authentication is a strict `none`, `bearer`, `header`, or `query` shape.
+- v1 secrets are plaintext or `env://NAME`; plaintext produces a warning.
+- Credentials are resolved only when connecting or explicitly refreshing, never when listing models.
+- Applications call upstream providers directly using their own adapter or the optional SDK client.
 
-```text
-~/.lapp/
-├── manifest.json
-├── providers/
-│   └── {providerId}/
-│       ├── provider.json
-│       └── models.json
-└── global.json
-```
+See the [English specification](./spec.en.md) or [Chinese specification](./spec.zh-CN.md) for the complete rules.
 
-- `provider.json`: required provider profile
-- `models.json`: provider model list, aliases, and capabilities; recommended for useful discovery
-- `global.json`: optional default chat, embedding, speech, and video models
-- `manifest.json`: optional root metadata
+## Security boundary
 
-## Core Protocols
+An application that resolves a LAPP connection receives a usable provider credential. Access to a usable profile must therefore be treated as permission to use that credential.
 
-LAPP v1 recommends support for:
+Profiles select both credentials and destinations. Load only a user-selected LAPP root, require HTTPS except for loopback, keep model discovery on the provider origin, reject authenticated redirects, and never log resolved secrets. See [Security Guidance](./security.en.md).
 
-- `openai-chat-completions`
-- `openai-responses`
-- `anthropic-messages`
+## Examples and validator
 
-Other protocols can be added as extension strings, such as `gemini-generate-content`, `ollama`, or `minimax-api`.
-
-A provider may support more than one protocol through `protocols[]`. Protocol order is meaningful: the first item is the preferred fallback protocol when a gateway or application cannot use the inbound/native protocol directly.
-
-## Examples
-
-- [Minimal example](./examples/en/minimal/.lapp)
-- [Full example](./examples/en/full/.lapp)
+- [Minimal English example](./examples/en/minimal/.lapp)
+- [Full English example](./examples/en/full/.lapp)
 - [中文最小示例](./examples/zh-CN/minimal/.lapp)
 - [中文完整示例](./examples/zh-CN/full/.lapp)
 
-The full example includes:
-
-- DeepSeek for default chat
-- SiliconFlow for embeddings
-- MiniMax for text-to-speech and video generation
-- Kimi coding-plan style `User-Agent` headers
-
-## Security Boundary
-
-LAPP is not a secret vault. It standardizes where local AI provider profiles can be found; it does not prevent an untrusted local application or malware from reading files the user can read.
-
-This is the same class of risk as `.env` files, cloud credentials, SSH keys, npm tokens, and other developer-machine secrets. `LAPP_HOME` can move the profile directory for workspace or environment separation, but it is not a secrecy mechanism.
-
-For production credentials, use a proper secret manager, KMS, vault, workload identity, trusted broker, server-side gateway, scoped keys, rotation, and audit controls. See [Security Guidance](./security.en.md).
-
-## Reference Validator
-
-This repository includes a read-only reference validator:
-
 ```bash
+npm install
+npm test
 node tools/validator/lapp-validate.mjs examples/en/full/.lapp
 ```
 
-The validator checks directory shape, JSON/JSONC parsing, required provider fields, `protocols` and model-level `protocol` references, default references, model aliases, and common secret/header footguns. It never modifies `.lapp` files and never calls provider APIs.
+The reference validator performs versioned JSON Schema validation followed by cross-file and security checks. It never modifies a profile or calls a provider API.
 
 ## Documentation
 
@@ -171,10 +141,10 @@ The validator checks directory shape, JSON/JSONC parsing, required provider fiel
 | Specification | [spec.en.md](./spec.en.md) | [spec.zh-CN.md](./spec.zh-CN.md) |
 | Implementation | [implementation.en.md](./implementation.en.md) | [implementation.zh-CN.md](./implementation.zh-CN.md) |
 | Security | [security.en.md](./security.en.md) | [security.zh-CN.md](./security.zh-CN.md) |
-| References | [references.en.md](./references.en.md) | [references.zh-CN.md](./references.zh-CN.md) |
+| Example sources | [references.en.md](./references.en.md) | [references.zh-CN.md](./references.zh-CN.md) |
 | Schemas | [schema/](./schema/) | [schema/](./schema/) |
 | Validator | [tools/validator/](./tools/validator/) | [tools/validator/](./tools/validator/) |
 
 ## License
 
-The LAPP specification, schemas, examples, and logo concept are licensed under the [MIT License](./LICENSE).
+The specification, schemas, examples, and logo concept are licensed under the [MIT License](./LICENSE).

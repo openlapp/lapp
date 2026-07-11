@@ -1,8 +1,0 @@
-{
-  // LAPP 根目录元信息。该文件可选。
-  "schemaVersion": "1.0",
-  "name": "LAPP 完整示例",
-  "createdAt": "2026-07-03T12:00:00+08:00",
-  "updatedAt": "2026-07-03T12:00:00+08:00",
-  "license": "MIT"
-}

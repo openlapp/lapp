@@ -1,192 +1,197 @@
 # LAPP v1 规范
 
-LAPP 是 Local AI Provider Profiles 的缩写。它约定一个轻量目录结构，让应用发现用户本机已经配置过的 AI 供应商。
+LAPP（Local AI Provider Profiles）是供 AI 应用使用的本机 Provider Registry。应用可以用它发现已配置模型，把选中的模型解析成上游 URL 和凭据，然后直接与上游通信。
 
-## 威胁模型
+LAPP 是文件约定，不定义 daemon、gateway、proxy、路由服务、计费系统或远程控制面。应用可以自行读取文件，也可以调用实现本规范的 SDK 或 CLI。
 
-LAPP 不是密钥保险箱，也不是安全沙箱。它标准化的是供应商 profile 的发现方式；如果恶意软件或不可信应用已经能读取本机文件，LAPP 本身挡不住。
+## 根目录与文件
 
-如果一个应用要直接调用供应商 API，它最终必须拿到可用凭证。因此，允许一个应用读取可用的 LAPP profile，就应视为允许该应用使用其中引用的供应商凭证。
-
-LAPP 可以通过推荐 `env://` 和 `keychain://`、提示明文 secret 风险，减少意外泄露和密钥散落。但它不能让一个不可信本地应用“既拿不到 key，又能直接调用供应商”。要做到这一点，需要可信 broker、本地网关、服务端代理、操作系统权限系统，或供应商签发的受限短期凭证。这些都不属于 LAPP v1 核心。
-
-## 根目录
-
-LAPP 默认根目录是：
-
-```text
-~/.lapp
-```
-
-应用也可以支持 `LAPP_HOME` 作为根目录覆盖：
-
-```bash
-LAPP_HOME=/path/to/.lapp
-```
-
-`LAPP_HOME` 指向 LAPP 根目录，不是某个 provider 目录。设置了 `LAPP_HOME` 时，应用应优先读取该位置；没有设置时，再回退到 `~/.lapp`。
-
-`LAPP_HOME` 是位置覆盖，不是保密机制。它适合工作区、CI、容器、便携配置、受管环境，或不想使用默认路径的用户。它不能防止能读取环境变量或本机文件的软件找到配置。
-
-LAPP v1 主要面向个人本机和开发环境。生产系统可以复用 LAPP 的 profile 形状，但不应把本地文件当作凭证安全边界。生产部署应使用 secret manager、KMS、vault、workload identity、可信 broker 或服务端网关来管理凭证。
-
-## 目录结构
+默认根目录是 `~/.lapp`。应用可以支持 `LAPP_HOME`；设置后，它表示完整根目录并优先于默认位置。
 
 ```text
 ~/.lapp/
-├── manifest.json
 ├── providers/
-│   └── {providerId}/
+│   └── <providerId>/
 │       ├── provider.json
 │       └── models.json
 └── global.json
 ```
 
-- `providers/{providerId}/provider.json`：必需，供应商基础配置。
-- `providers/{providerId}/models.json`：供应商模型清单；最小可用 profile 建议包含。
-- `global.json`：可选，全局默认模型。
-- `manifest.json`：可选，LAPP 根目录元信息。
+- `providers/` 中每个目录代表一个 provider。
+- 每个 provider 目录同时包含 `provider.json` 和 `models.json`。
+- `global.json` 可选。
+- LAPP v1 文件只能是 UTF-8 标准 JSON，不支持 JSONC 或其他扩展名。
+- `manifest.json` 在 LAPP v1 中没有语义。
 
-## 核心协议值
+三种文档都必须包含 `"schemaVersion": "1.0"`。实现必须拒绝不支持的版本。核心对象不接受未知字段；实现自定义数据只能放入 `extensions`。
 
-LAPP v1 建议优先支持：
+[`schema/`](./schema/) 定义文件形状。下文补充 JSON Schema 无法表达的跨文件与安全约束。
 
-- `openai-chat-completions`
-- `openai-responses`
-- `anthropic-messages`
+## 标识符
 
-扩展协议可以使用自定义字符串，例如 `gemini-generate-content`、`ollama`、`minimax-api`。应用遇到未知协议时应提示不支持，而不是崩溃。
+Provider ID 必须匹配：
+
+```text
+^[a-z0-9][a-z0-9._-]{0,63}$
+```
+
+它不能是 Windows 保留设备名（大小写不敏感的 `CON`、`PRN`、`AUX`、`NUL`、`COM1`–`COM9` 或 `LPT1`–`LPT9`，包括带扩展名的保留 basename），也不能以点结尾。Provider 目录名必须与 `provider.id` 完全一致。实现必须拒绝非法 ID，不得把 ID 清洗后当作文件名。
+
+Model ID 是发送给上游的原始字符串，可以包含 `/`，但不能是空字符串、纯空白或含控制字符。同一 provider 内的全部 model ID 和 alias 共用一个唯一命名空间。
 
 ## provider.json
-
-`provider.json` 描述供应商本身。支持 `.json` 或 `.jsonc`（带注释的 JSON）。最小示例：
 
 ```json
 {
   "schemaVersion": "1.0",
   "id": "deepseek",
+  "name": "DeepSeek",
+  "enabled": true,
   "baseUrl": "https://api.deepseek.com",
-  "protocols": [
-    "openai-chat-completions"
-  ],
+  "protocols": ["openai-chat-completions"],
   "auth": {
+    "type": "bearer",
     "secret": "env://DEEPSEEK_API_KEY"
+  },
+  "modelDiscovery": {
+    "protocol": "openai-models",
+    "url": "https://api.deepseek.com/models"
   }
 }
 ```
 
-字段说明：
+字段：
 
-- `schemaVersion`：建议提供，当前为 `1.0`。
-- `id`：必需，建议与目录名一致。
-- `name`：可选，展示名称。
-- `enabled`：可选，缺省视为 `true`。
-- `baseUrl`：必需，供应商 API 基础地址。应用不得自动追加 `/v1`。
-- `protocols`：必需，供应商支持的协议 adapter 列表。顺序有意义：当应用或网关需要选择 fallback 目标协议时，第一个协议是首选协议。条目可以是协议字符串（常规形态），也可以是协议对象。
-- `links`：可选，官网、控制台、文档、API Key 链接。
-- `auth`：可选，认证配置。
-- `requestHeaders`：可选，非密钥静态请求头，例如特定供应商要求的 `User-Agent`。
+- `schemaVersion`、`id`、`baseUrl`、`protocols` 和 `auth` 必填。
+- `name` 是可选显示名称。
+- `enabled` 缺省为 `true`。
+- `baseUrl` 是上游 API 基础地址。OpenAI-compatible 实现不得猜测或插入版本路径；协议明确定义的 endpoint 路径仍需应用。
+- `protocols` 是非空、有序协议 ID 列表。
+- `requestHeaders` 保存可选的非密钥静态 HTTP 头。
+- `modelDiscovery` 启用显式远端模型刷新。
+- `extensions` 保存带命名空间的实现自定义数据。
 
-常规形态直接使用字符串：
+### 协议选择
+
+核心对话协议 ID 为：
+
+- `openai-chat-completions`
+- `openai-responses`
+- `anthropic-messages`
+
+可以保存其他符合语法的 ID。实现无法执行时必须返回 unsupported-protocol 错误，不能静默改成另一种协议。
+
+协议顺序就是偏好顺序。应用声明支持协议集合后，选择模型候选中第一个属于该集合的协议；应用未传支持集合时选择第一个候选。模型存在 `model.protocols` 时以它为候选，否则继承 `provider.protocols`。
+
+### URL
+
+`baseUrl` 和 `modelDiscovery.url` 必须是绝对 URL，不能带用户名、密码或 fragment。远端 URL 必须使用 HTTPS；只有 loopback 主机（`localhost`、`127.0.0.0/8` 和 `::1`）可以使用 HTTP。
+
+协议在 `baseUrl` 下定义 endpoint 时，实现必须把它追加到 URL pathname，而不是拼接到序列化 URL 字符串，并保留已配置的 query 参数。
+
+存在 `modelDiscovery` 时，其 URL 必须与 `baseUrl` 同源。带认证的请求必须使用 `redirect: error` 或等价行为，凭据绝不能跟随重定向。
+
+### 认证
+
+`auth` 必须严格匹配以下一种：
 
 ```json
-{
-  "protocols": ["openai-chat-completions", "anthropic-messages"]
-}
+{ "type": "none" }
+{ "type": "bearer", "secret": "env://API_KEY" }
+{ "type": "header", "name": "X-Custom-Key", "secret": "env://API_KEY" }
+{ "type": "query", "name": "api_key", "secret": "env://API_KEY" }
 ```
 
-只有某个协议需要自己的设置（如该协议专用的基础地址）时，才使用协议对象：
+任何认证类型都没有隐式 fallback。Bearer 生成 `Authorization: Bearer <value>`；header 和 query 使用配置的 `name`，不会自动增加前缀。
+
+LAPP v1 只支持两种 secret：
+
+- `env://NAME`，其中 `NAME` 是合法环境变量名；
+- 非空明文字符串。
+
+其他 URI scheme（包括 `file://` 和 `keychain://`）在 v1 中非法。校验器应对明文给出警告，因为明文更容易泄漏。Secret 值绝不能写入诊断、模型数据或日志。
+
+HTTP header 名必须是合法 token，值不能含 CR 或 LF。`requestHeaders` 不得包含凭据，包括 Authorization、代理认证、Cookie 或 API-key 头；认证只能配置在 `auth` 中。
+`requestHeaders` 也不得以大小写不同的形式重复 header auth 配置的名称。
+
+### 模型发现
+
+`modelDiscovery.protocol` 只能是 `openai-models` 或 `anthropic-models`。URL 必须显式配置，实现不得猜测或自动追加 models 路径。
+
+远端刷新是显式操作，必须：
+
+1. 解析当前 provider 的 auth；
+2. 请求配置的同源 URL 且禁止跟随重定向；
+3. 拒绝非 2xx、格式错误或不完整响应；
+4. 归一化返回的 model ID 和可选显示名称；
+5. 返回建议的新 profile，不自动写盘。
+
+合法空列表不产生改动。刷新只把远端新 ID 按 ID 排序后追加到现有列表末尾；可以填充本地缺失的显示名称，但不能覆盖任何已有本地字段，也不能删除本地模型。
+
+## models.json
 
 ```json
 {
-  "protocols": [
-    "openai-chat-completions",
+  "schemaVersion": "1.0",
+  "models": [
     {
-      "id": "anthropic-messages",
-      "baseUrl": "https://api.example.com"
+      "id": "deepseek-v4-flash",
+      "name": "DeepSeek V4 Flash",
+      "aliases": ["ds-v4-flash"],
+      "protocols": ["openai-chat-completions"],
+      "type": "chat",
+      "inputModalities": ["text"],
+      "outputModalities": ["text"],
+      "capabilities": ["chat", "stream", "tool-call"],
+      "contextWindow": 1000000,
+      "maxOutputTokens": 384000,
+      "enabled": true
     }
   ]
 }
 ```
 
-协议对象字段：
+模型只有 `id` 必填，`enabled` 缺省为 `true`。`name`、`aliases`、`type`、模态、能力、正整数 token 限制和 `extensions` 都是本地描述数据。
 
-- `id`：必需，协议标识，例如 `openai-chat-completions`、`openai-responses` 或 `anthropic-messages`。
-- `baseUrl`：可选，该协议专用的 API 基础地址。未提供时使用 provider 级 `baseUrl`。
-- `requestHeaders`：可选，规则同 provider 级字段。在该协议下与 provider 级 `requestHeaders` 合并，同名键以协议级为准。
+存在 `protocols` 时，它必须是 provider protocols 的非空子集；缺省时继承 provider 的有序 protocols。
 
-`auth` 字段：
-
-- `type`：可选，常见值包括 `bearer`（缺省）、`api-key`、`none`。未知值原样透传。
-- `secret`：凭证，支持级别见下文。
-- `header`：可选，当 `type` 不是 `bearer` 时携带密钥的请求头名，缺省值取决于供应商协议。
-- `queryParam`：可选，使用 query 鉴权的供应商所用的查询参数名。
-
-`auth.secret` 支持：
-
-- MUST：明文字符串、`env://NAME`
-- SHOULD：`keychain://namespace/item`
-- MAY：`file://path`
-
-`requestHeaders` 不应用于保存 `Authorization` 或 API Key。
-
-## models.json
-
-`models.json` 描述供应商下的模型，支持 `.json` 或 `.jsonc`。一个模型条目包含这些字段：
-
-- `id`：必需，真实调用名。
-- `name`：可选，展示名称。
-- `aliases`：可选，本地短别名。应用可以允许用户选择 alias，但向供应商发请求时必须使用 `id`。
-- `source`：条目来源。
-  - `provider`：来自供应商模型列表。刷新时如果远端不存在，应用可以移除或禁用。
-  - `manual`：用户或应用手动维护。刷新时不得静默覆盖或删除。
-- `type`：模型大类，常见值包括 `chat`、`embedding`、`rerank`、`image-generation`、`image-edit`、`video-generation`、`audio-generation`、`speech-to-text`、`text-to-speech`。
-- `inputModalities` 和 `outputModalities`：输入输出形态，常见值包括 `text`、`image`、`audio`、`video`、`file`。
-- `capabilities`：可选能力标签，常见值包括 `chat`、`stream`、`reasoning`、`tool-call`、`vision`、`coding`、`embedding`、`text-to-speech`、`audio-generation`、`video-generation`。
-- `protocol`：可选，调用该模型时使用的供应商协议。未提供时应用应使用供应商首选（第一个）协议。提供时必须引用该供应商 `protocols` 中已声明的协议之一。
-- `contextWindow` 和 `maxOutputTokens`：可选整数限制。
-- `enabled`：可选，缺省视为 `true`。
-- `links` 和 `metadata`：可选参考链接和自由元数据。
+`models.json` 是本地权威模型目录。远端返回值只是发现输入，不是第二套事实源。应用不得根据模型名称猜测能力。
 
 ## global.json
-
-`global.json` 保存应用没有自己偏好时可参考的默认模型。它是可选文件，支持 `.json` 或 `.jsonc`，不能替代 `models.json`：
 
 ```json
 {
   "schemaVersion": "1.0",
-  "defaultModel": {
-    "providerId": "deepseek",
-    "model": "deepseek-v4-flash"
-  },
-  "defaultEmbeddingModel": {
-    "providerId": "siliconflow",
-    "model": "BAAI/bge-m3"
-  },
-  "defaultTextToSpeechModel": {
-    "providerId": "minimax",
-    "model": "speech-2.8-turbo"
-  },
-  "defaultVideoModel": {
-    "providerId": "minimax",
-    "model": "MiniMax-Hailuo-2.3"
+  "defaults": {
+    "chat": {
+      "providerId": "deepseek",
+      "modelId": "deepseek-v4-flash"
+    }
   }
 }
 ```
 
-可识别的默认键为 `defaultModel`、`defaultEmbeddingModel`、`defaultImageModel`、`defaultTextToSpeechModel` 和 `defaultVideoModel`，均为可选。每个键是 `{ providerId, model }` 引用；`model` 可以命中该供应商下某个模型的 `id` 或 alias。
+`defaults` 把操作名映射到 canonical provider 和 model ID。操作名是 `chat`、`embedding`、`text-to-speech` 之类的小写标识符。
 
-`model` 永远是字符串。LAPP 不解析模型 ID 中的 `/`。
+默认值必须用 canonical ID 引用现有且启用的 provider 和 model，不能把 alias 写入 `global.json`。没有 `global.json` 的 profile 仍然合法。
 
-没有 `global.json` 的 profile 仍然合法。应用可以从 `models.json` 中选择模型，或让用户自己选择。
+## 连接解析
 
-## manifest.json
+输入 `{ providerId, model }` 或默认操作名后，实现必须：
 
-`manifest.json` 是可选的根目录元信息，描述整份 profile 集合，支持 `.json` 或 `.jsonc`。应用应仅将其视为信息性内容，不影响供应商发现。字段：
+1. 必要时先解析 default；
+2. 找到存在且启用的 provider；
+3. 在该 provider 的 model ID 与 aliases 中解析 `model`，歧义时报错；
+4. 确认模型启用，并把 alias 归一成 canonical model ID；
+5. 按前述有序交集规则选择协议；
+6. 验证 URL 和静态 headers；
+7. 解析 secret，并且只构造一种认证方式；
+8. 返回 canonical provider ID、model ID、protocol、base URL、headers 和仅存在于内存的 auth 值。
 
-- `schemaVersion`：建议提供，当前为 `1.0`。
-- `name`：可选，profile 集合的可读名称。
-- `createdAt` 和 `updatedAt`：可选时间戳（ISO 8601）。
-- `license`：可选，profile 集合的授权说明。
+读取模型列表不得解析 secret 或访问网络。只有连接解析和显式刷新需要凭据。
 
-没有 `manifest.json` 的 profile 仍然合法。
+## 校验与写入
+
+实现必须先用对应版本的 Schema 校验每个文件，再执行语义规则。每次写入和删除前，都必须解析目标绝对路径，并证明它仍在选定的 LAPP 根目录内。更新文件应在同目录写临时文件，再原子 rename。
+
+LAPP v1 假定同一时间只有一个写入者，不定义锁、多文件事务、合并行为或旧 draft 迁移。

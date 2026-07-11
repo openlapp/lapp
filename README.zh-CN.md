@@ -4,21 +4,12 @@
 
 <h1 align="center">LAPP</h1>
 
-<p align="center">
-  <strong>Local AI Provider Profiles</strong>
-</p>
+<p align="center"><strong>Local AI Provider Profiles</strong></p>
+<p align="center">供 AI 应用共享的一份本机 Provider Registry。</p>
 
 <p align="center">
-  面向 AI 应用的轻量本机供应商配置规范。
-</p>
-
-<p align="center">
-  <a href="./README.md">主 README</a>
-  ·
-  <a href="./README.en.md">English</a>
-  ·
-  <a href="./spec.zh-CN.md">规范</a>
-  ·
+  <a href="./README.md">English</a> ·
+  <a href="./spec.zh-CN.md">规范</a> ·
   <a href="./examples/zh-CN/full/.lapp">示例</a>
 </p>
 
@@ -30,56 +21,55 @@
 
 ---
 
-LAPP 是一套非常小的文件约定，用于在同一台机器上共享 AI 供应商配置。
-
-不必让每个 AI 应用都重复配置 DeepSeek、Kimi、OpenAI、MiniMax、SiliconFlow、OpenRouter 和其他供应商，LAPP 给应用一个共同查找位置：
+LAPP 让 AI 应用复用当前用户已经配置过的 provider、模型、endpoint 和凭据。
 
 ```text
-~/.lapp/
+直接实现：应用 → LAPP 文件 → 上游 API
+SDK：    应用 → LAPP SDK → 上游 API
+CLI：   应用 → LAPP CLI JSON → 上游 API
 ```
 
-LAPP **不是** 本地服务，不代理请求，不管理计费，不强制 fallback，也不试图成为另一个网关。它只描述用户已经拥有的供应商和模型。
-
-默认根目录是 `~/.lapp`。应用可以支持 `LAPP_HOME` 作为根目录覆盖，用于工作区、CI、容器或受管环境。`LAPP_HOME` 是位置覆盖，不是保密机制。
+LAPP 是文件约定，不运行服务，不代理请求，不转换协议，不管理计费，也不控制远程机器。
 
 ## 为什么
 
-AI 应用正在反复实现同一套供应商设置页：
-
-- API key
-- base URL
-- 协议 adapter
-- 模型 ID 和别名
-- 默认模型
-- 模型能力
-
-LAPP 把这些共享 profile 数据放在一个可预测的本机目录里，让应用可以发现它，而不是反复要求用户输入。
-
-## 最小形态
-
-最小可用的 LAPP profile 只需要一个供应商：
+没有共同 Registry 时，每个 AI 应用都会要求用户重复输入 API key、base URL、模型 ID 和默认模型。LAPP 把这些信息放在一个可预测目录：
 
 ```text
 ~/.lapp/
-└── providers/
-    └── deepseek/
-        ├── provider.json
-        └── models.json
 ```
+
+应用可以支持 `LAPP_HOME`，为 CI、容器或受管环境显式覆盖根目录。
+
+## LAPP v1
+
+```text
+~/.lapp/
+├── providers/
+│   └── deepseek/
+│       ├── provider.json
+│       └── models.json
+└── global.json
+```
+
+LAPP v1 只使用标准 JSON。所有文件都包含 `"schemaVersion": "1.0"`。每个 provider 必须有 `provider.json` 和 `models.json`；`global.json` 可选。
+
+`provider.json`：
 
 ```json
 {
   "schemaVersion": "1.0",
   "id": "deepseek",
   "baseUrl": "https://api.deepseek.com",
-  "protocols": [
-    "openai-chat-completions"
-  ],
+  "protocols": ["openai-chat-completions"],
   "auth": {
+    "type": "bearer",
     "secret": "env://DEEPSEEK_API_KEY"
   }
 }
 ```
+
+`models.json`：
 
 ```json
 {
@@ -87,7 +77,7 @@ LAPP 把这些共享 profile 数据放在一个可预测的本机目录里，让
   "models": [
     {
       "id": "deepseek-v4-flash",
-      "source": "manual",
+      "name": "DeepSeek V4 Flash",
       "type": "chat",
       "capabilities": ["chat", "stream"]
     }
@@ -95,86 +85,65 @@ LAPP 把这些共享 profile 数据放在一个可预测的本机目录里，让
 }
 ```
 
-一个最小 LAPP v1 应用会先扫描：
+`global.json`：
 
-```text
-~/.lapp/providers/*/provider.json
+```json
+{
+  "schemaVersion": "1.0",
+  "defaults": {
+    "chat": {
+      "providerId": "deepseek",
+      "modelId": "deepseek-v4-flash"
+    }
+  }
+}
 ```
 
-对每个 provider，应用读取 `id`、`baseUrl`、`protocols` 和 `auth.secret`，再读取同目录的 `models.json` 来发现模型（模型级 `protocol` 必须命中该供应商 `protocols` 中已声明的协议）。`global.json` 是可选的默认偏好文件，用来保存用户或环境的默认选择，不是模型清单本身。
+## 合同
 
-## 目录结构
+- `models.json` 是本地权威模型目录。
+- 远端模型刷新只能显式执行，只追加，绝不删除或覆盖本地条目。
+- Protocol 顺序就是偏好顺序，应用选择自己支持的第一项。
+- 核心对话协议是 `openai-chat-completions`、`openai-responses` 和 `anthropic-messages`。
+- Auth 是严格的 `none`、`bearer`、`header` 或 `query` 结构。
+- v1 secret 只支持明文或 `env://NAME`；明文会产生警告。
+- 只有连接或显式刷新时解析凭据，列出模型时不解析。
+- 应用使用自己的 adapter 或可选 SDK client 直接调用上游。
 
-```text
-~/.lapp/
-├── manifest.json
-├── providers/
-│   └── {providerId}/
-│       ├── provider.json
-│       └── models.json
-└── global.json
-```
-
-- `provider.json`：必需的供应商 profile
-- `models.json`：供应商模型列表、别名和能力描述；推荐用于有实际发现能力的 profile
-- `global.json`：可选的默认对话、向量、语音和视频模型
-- `manifest.json`：可选的根目录元信息
-
-## 核心协议
-
-LAPP v1 建议支持：
-
-- `openai-chat-completions`
-- `openai-responses`
-- `anthropic-messages`
-
-其他协议可以作为扩展字符串添加，例如 `gemini-generate-content`、`ollama` 或 `minimax-api`。
-
-一个 provider 可以通过 `protocols[]` 声明多个支持协议。协议顺序有意义：当网关或应用无法直接使用入口/原生协议时，第一项是首选 fallback 协议。
-
-## 示例
-
-- [最小示例](./examples/zh-CN/minimal/.lapp)
-- [完整示例](./examples/zh-CN/full/.lapp)
-- [英文最小示例](./examples/en/minimal/.lapp)
-- [英文完整示例](./examples/en/full/.lapp)
-
-完整示例包含：
-
-- DeepSeek 作为默认对话模型
-- SiliconFlow 作为向量模型
-- MiniMax 作为语音合成和视频生成模型
-- Kimi coding plan 风格的 `User-Agent` 请求头
+完整规则见[中文规范](./spec.zh-CN.md)和[英文规范](./spec.en.md)。
 
 ## 安全边界
 
-LAPP 不是密钥保险箱。它只是标准化本机 AI 供应商 profile 的发现位置；它不能阻止不可信本机应用或恶意软件读取用户本来就能读取的文件。
+应用解析 LAPP 连接后会得到可用 provider 凭据，因此访问可用 profile 就等同于获得使用该凭据的权限。
 
-这和 `.env`、云厂商凭证、SSH key、npm token 以及其他开发者本机密钥属于同一类风险。`LAPP_HOME` 可以移动 profile 目录，用于工作区或环境隔离，但它不是保密机制。
+Profile 同时选择凭据和目的地。只加载用户选择的 LAPP root；远端必须使用 HTTPS；模型发现必须同源；带认证请求拒绝重定向；绝不记录解析后的 secret。详见[安全建议](./security.zh-CN.md)。
 
-生产凭证应交给 secret manager、KMS、vault、workload identity、可信 broker、服务端网关、受限 key、轮换和审计机制处理。详见 [安全建议](./security.zh-CN.md)。
+## 示例与校验器
 
-## 参考校验器
-
-本仓库包含一个只读参考校验器：
+- [中文最小示例](./examples/zh-CN/minimal/.lapp)
+- [中文完整示例](./examples/zh-CN/full/.lapp)
+- [英文最小示例](./examples/en/minimal/.lapp)
+- [英文完整示例](./examples/en/full/.lapp)
 
 ```bash
+npm install
+npm test
 node tools/validator/lapp-validate.mjs examples/zh-CN/full/.lapp
 ```
 
-校验器会检查目录结构、JSON/JSONC 解析、provider 必需字段、`protocols` 和模型级 `protocol` 引用、默认引用、模型别名和常见密钥/请求头风险。它不会修改 `.lapp` 文件，也不会调用供应商 API。
+Reference validator 先执行版本化 JSON Schema 校验，再执行跨文件和安全检查。它不会修改 profile，也不会调用 provider API。
 
 ## 文档
 
 | 主题 | English | 中文 |
 | --- | --- | --- |
 | Specification / 规范 | [spec.en.md](./spec.en.md) | [spec.zh-CN.md](./spec.zh-CN.md) |
-| Implementation / 实现建议 | [implementation.en.md](./implementation.en.md) | [implementation.zh-CN.md](./implementation.zh-CN.md) |
+| Implementation / 实现 | [implementation.en.md](./implementation.en.md) | [implementation.zh-CN.md](./implementation.zh-CN.md) |
 | Security / 安全 | [security.en.md](./security.en.md) | [security.zh-CN.md](./security.zh-CN.md) |
-| References / 参考 | [references.en.md](./references.en.md) | [references.zh-CN.md](./references.zh-CN.md) |
+| 示例来源 | [references.en.md](./references.en.md) | [references.zh-CN.md](./references.zh-CN.md) |
 | Schemas | [schema/](./schema/) | [schema/](./schema/) |
 | Validator / 校验器 | [tools/validator/](./tools/validator/) | [tools/validator/](./tools/validator/) |
 
 ## 授权
 
-LAPP 规范、Schema、示例和 Logo 概念稿均使用 [MIT License](./LICENSE)。
+规范、Schema、示例和 Logo 概念稿使用 [MIT License](./LICENSE)。

@@ -1,48 +1,47 @@
-# LAPP 安全建议
+# LAPP v1 安全建议
 
-LAPP 不强制密钥保存方式，只约定应用如何理解 `auth.secret`。
+## 信任边界
 
-## 安全边界
+LAPP 是本地 Registry，不是密钥保险箱或安全沙箱。应用解析 LAPP 连接后会得到可用的 provider 凭据，并直接调用该 provider。因此，允许应用访问可用 profile，就等同于允许它使用其中引用的凭据。
 
-LAPP 不是密钥保险箱。标准化 `~/.lapp` 会让应用更容易发现 profile，也会让恶意软件更容易知道去哪里找。这和 `.env`、云厂商凭证、SSH key、npm token 以及其他开发者本机密钥属于同一类风险。
+LAPP v1 假定同一 OS 用户下运行的应用可信，不防御能读取用户文件或环境变量的恶意软件和恶意本地应用。
 
-如果恶意程序或不可信应用已经能读取本机文件，LAPP 本身挡不住。它能读到 `~/.lapp`，通常也可能读到其他本机凭证。
+如果应用必须在看不到 provider key 的情况下调用模型，就不可能继续直连上游。这个独立需求需要单独设计的 proxy 或短期受限凭据，不属于 LAPP v1。
 
-如果一个应用要直接调用供应商 API，它最终必须获得可用凭证。用户应将“允许应用读取可用 LAPP profile”视为“允许该应用使用其中引用的供应商凭证”。
+## Profile 权限
 
-如果要做到“应用永远看不到供应商 key，但仍然能调用模型”，key 必须放在可信 broker、本地网关、服务端代理、操作系统权限系统，或短期受限凭证流程之后。这不属于 LAPP v1。
+Profile 同时选择凭据和发送目的地，因此它是具有执行效果的安全敏感配置。应用只应加载用户选择的 root（`LAPP_HOME` 或 `~/.lapp`），不得自动启用项目目录、下载压缩包或不可信同步目录中发现的 profile。
 
-## LAPP_HOME
+解析 secret 前必须校验完整 profile。模型发现地址必须绑定 provider origin，并拒绝重定向，避免 profile 把凭据发送到另一台主机。
 
-应用可以支持 `LAPP_HOME`，从非默认根目录读取 profile。这适合开发工作区、CI、容器、便携配置和受管环境。
+## Secret
 
-`LAPP_HOME` 不是保密机制。如果恶意软件能读取环境变量，它就能找到覆盖路径。如果它能读取本机文件，换个目录并不会让密钥安全。
+LAPP v1 支持：
 
-`LAPP_HOME` 适合做环境隔离，不适合当作密钥隔离。
+- `env://NAME` 环境变量引用；
+- 用户明确配置的明文 secret。
+
+明文适合低门槛本地使用，但应产生警告；新工具应优先使用 `env://`。LAPP v1 刻意不定义 `file://`、`keychain://`、加密存储、secret 迁移或 secret 同步。
+
+解析后的 secret 绝不能进入 diagnostics、日志、模型目录、缓存、异常或 debug 输出。脱敏应比较真实解析值，不能只依赖一份固定的常见 header 名单。
+
+## 传输与 Headers
+
+- 远端 provider 必须使用 HTTPS，只有 loopback 可以使用 HTTP。
+- 拒绝 URL 中的用户名、密码和 fragment。
+- `modelDiscovery.url` 必须与 `baseUrl` 完全同源。
+- 带认证请求必须拒绝重定向。
+- Header value 不能含 CR/LF。
+- 所有携带凭据的 header 和 query 参数只能放在 `auth`，不能放在 `requestHeaders`。
+- 发送前移除 `requestHeaders` 中与所选 auth header 大小写不敏感冲突的项，确保只传输一个凭据值。
+- Origin 变化时绝不能继续携带认证。
+
+## 文件系统
+
+Provider ID 是不可信输入。必须拒绝非法或保留 ID，不能清洗后继续。每次写入和删除前，都要解析最终路径并确认它仍在选定的 LAPP root 内。平台支持时，应使用仅当前用户可读的权限。
+
+不要在不可信仓库中使用项目本地 `LAPP_HOME`。`LAPP_HOME` 只改变位置，不提供隔离。
 
 ## 生产环境
 
-LAPP v1 主要面向个人本机和开发环境。生产系统可以复用 LAPP 的 profile 形状，但不应把本地文件当作凭证安全边界。
-
-生产凭证应交给 secret manager、KMS、vault、workload identity、可信 broker、服务端网关、受限 key、轮换和审计机制处理。
-
-## secret 形式
-
-- 明文字符串：最容易使用，也最容易泄露。
-- `env://NAME`：从环境变量读取，LAPP v1 应用必须支持。
-- `keychain://namespace/item`：从系统钥匙串读取，推荐支持。
-- `file://path`：从本地文件读取，可选支持。
-
-## 同步建议
-
-可以同步 `~/.lapp`，但不建议同步明文密钥。需要跨机器同步时，优先使用 `env://` 或 `keychain://`，让每台机器自己提供密钥。
-
-## requestHeaders
-
-`requestHeaders` 只用于非密钥静态请求头，例如 `User-Agent`。不要把 `Authorization`、API Key 或 Cookie 放进 `requestHeaders`。
-
-## 明文密钥
-
-LAPP 允许明文密钥是为了降低个人用户门槛。应用保存新配置时不应默认生成明文密钥，除非用户明确选择。
-
-参考校验器和工具应该在发现明文 secret 或敏感请求头时给出警告，但警告不是隔离。它只能减少意外泄露，不能防御已经沦陷的本机环境。
+LAPP v1 面向个人本机和开发环境。生产系统可以复用数据形状，但实际凭据边界应使用 workload identity、secret manager、KMS、受限 key、轮换和审计。
