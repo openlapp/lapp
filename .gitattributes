@@ -1,0 +1,6 @@
+# Canonical, byte-locked protocol artifacts use LF on every platform.
+schema/*.schema.json text eol=lf
+spec.en.md text eol=lf
+spec.zh-CN.md text eol=lf
+USER_AGREEMENT.en.md text eol=lf whitespace=-trailing-space
+USER_AGREEMENT.zh-CN.md text eol=lf whitespace=-trailing-space
