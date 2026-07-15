@@ -43,7 +43,8 @@
     },
     "secret": {
       "type": "string",
-      "pattern": "^(?!\\s*$)[^\\r\\n]+$"
+      "description": "A strict env:// or vault:// reference, or an explicit non-URI plaintext secret",
+      "pattern": "^(?:env://[A-Za-z_][A-Za-z0-9_]*|vault://[a-z0-9][a-z0-9._-]{0,63}/[a-z0-9][a-z0-9._-]{0,63}|(?!env:)(?!vault:)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!\\s*$)[^\\r\\n]+)$"
     },
     "auth": {
       "oneOf": [

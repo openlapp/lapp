@@ -16,8 +16,8 @@
 
 <p align="center">
   <a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg" /></a>
-  <img alt="Status: draft" src="https://img.shields.io/badge/status-draft-orange.svg" />
-  <img alt="LAPP v1" src="https://img.shields.io/badge/LAPP-v1-blue.svg" />
+  <img alt="Status: standard" src="https://img.shields.io/badge/status-standard-brightgreen.svg" />
+  <img alt="LAPP v1.0.0" src="https://img.shields.io/badge/LAPP-v1.0.0-blue.svg" />
 </p>
 
 ---
@@ -65,7 +65,7 @@ LAPP v1 只使用标准 JSON。所有文件都包含 `"schemaVersion": "1.0"`。
   "protocols": ["openai-chat-completions"],
   "auth": {
     "type": "bearer",
-    "secret": "env://DEEPSEEK_API_KEY"
+    "secret": "vault://deepseek/default"
   }
 }
 ```
@@ -107,7 +107,7 @@ LAPP v1 只使用标准 JSON。所有文件都包含 `"schemaVersion": "1.0"`。
 - Protocol 顺序就是偏好顺序，应用选择自己支持的第一项。
 - 核心对话协议是 `openai-chat-completions`、`openai-responses` 和 `anthropic-messages`。
 - Auth 是严格的 `none`、`bearer`、`header` 或 `query` 结构。
-- v1 secret 只支持明文或 `env://NAME`；明文会产生警告。
+- v1 secret 只支持明文、`env://NAME` 或严格的设备级 `vault://<providerId>/<credentialId>`；新建凭据的工具默认把 raw secret 存入 Vault，明文仍可显式选择但会产生警告。
 - 只有连接或显式刷新时解析凭据，列出模型时不解析。
 - 应用使用自己的 adapter 或可选 SDK client 直接调用上游。
 
@@ -115,7 +115,7 @@ LAPP v1 只使用标准 JSON。所有文件都包含 `"schemaVersion": "1.0"`。
 
 ## 安全边界
 
-应用解析 LAPP 连接后会得到可用 provider 凭据，因此访问可用 profile 就等同于获得使用该凭据的权限。
+应用解析 LAPP 连接后会得到可用 provider 凭据。设备 Vault 保护静态存储，但不会让凭据不可导出，也不隔离同一 OS 用户下的应用。因此，访问可用 profile 和凭据就等同于获得使用该凭据的权限。
 
 Profile 同时选择凭据和目的地。只加载用户选择的 LAPP root；远端必须使用 HTTPS；模型发现必须同源；带认证请求拒绝重定向；绝不记录解析后的 secret。详见[安全建议](./security.zh-CN.md)。
 

@@ -10,6 +10,8 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA_DIR = path.resolve(SCRIPT_DIR, "../../schema");
 const WINDOWS_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i;
 const ENV_SECRET = /^env:\/\/[A-Za-z_][A-Za-z0-9_]*$/;
+const VAULT_SECRET = /^vault:\/\/([a-z0-9][a-z0-9._-]{0,63})\/([a-z0-9][a-z0-9._-]{0,63})$/;
+const URI_SECRET = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//;
 const SENSITIVE_HEADERS = new Set([
   "authorization",
   "proxy-authorization",
@@ -18,6 +20,12 @@ const SENSITIVE_HEADERS = new Set([
   "api-key",
   "x-api-key",
 ]);
+
+function portableIdProblem(value) {
+  if (WINDOWS_RESERVED.test(value)) return "must not use a reserved Windows device basename";
+  if (value.endsWith(".")) return "must not end with a dot";
+  return null;
+}
 
 function readSchema(name) {
   return JSON.parse(fs.readFileSync(path.join(SCHEMA_DIR, `${name}.schema.json`), "utf8"));
@@ -124,20 +132,42 @@ function parseSafeUrl(value, location, field, reporter) {
   return url;
 }
 
-function validateSecret(auth, location, reporter) {
+function validateSecret(auth, providerId, location, reporter) {
   if (auth.type === "none") return;
   const secret = auth.secret;
-  if (secret.startsWith("env://")) {
+  if (typeof secret !== "string") return;
+  if (secret.startsWith("env:")) {
     if (!ENV_SECRET.test(secret)) {
       reporter.add("ERROR", location, "INVALID_ENV_SECRET", "auth.secret must use env:// followed by a valid environment-variable name");
     }
     return;
   }
-  if (/^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(secret)) {
-    reporter.add("ERROR", location, "UNSUPPORTED_SECRET_SCHEME", "auth.secret supports only plaintext or env://NAME in LAPP v1");
+  if (secret.startsWith("vault:")) {
+    const match = secret.match(VAULT_SECRET);
+    if (!match) {
+      reporter.add("ERROR", location, "INVALID_VAULT_SECRET", "auth.secret must use vault://<providerId>/<credentialId> with portable lowercase IDs");
+      return;
+    }
+    const providerProblem = portableIdProblem(match[1]);
+    if (providerProblem) {
+      reporter.add("ERROR", location, "INVALID_VAULT_SECRET", `vault provider id ${providerProblem}`);
+      return;
+    }
+    const credentialProblem = portableIdProblem(match[2]);
+    if (credentialProblem) {
+      reporter.add("ERROR", location, "INVALID_VAULT_SECRET", `vault credential id ${credentialProblem}`);
+      return;
+    }
+    if (typeof providerId === "string" && match[1] !== providerId) {
+      reporter.add("ERROR", location, "VAULT_PROVIDER_MISMATCH", `vault provider id "${match[1]}" must match provider.id "${providerId}"`);
+    }
     return;
   }
-  reporter.add("WARN", location, "PLAINTEXT_SECRET", "auth.secret is plaintext; prefer env://NAME");
+  if (URI_SECRET.test(secret)) {
+    reporter.add("ERROR", location, "UNSUPPORTED_SECRET_SCHEME", "auth.secret supports only plaintext, env://NAME, or vault://<providerId>/<credentialId> in LAPP v1");
+    return;
+  }
+  reporter.add("WARN", location, "PLAINTEXT_SECRET", "auth.secret is plaintext; prefer vault://<providerId>/<credentialId> or env://NAME");
 }
 
 function validateHeaders(headers, auth, location, reporter) {
@@ -224,8 +254,13 @@ function validateProvider(providerDir, root, reporter) {
     return null;
   }
   const parsed = readJson(file, "provider.json", reporter, root);
-  if (!parsed.ok || !validateSchema("provider", parsed.value, fileLocation, reporter)) return null;
+  if (!parsed.ok) return null;
   const data = parsed.value;
+  const schemaValid = validateSchema("provider", data, fileLocation, reporter);
+  if (data && typeof data === "object" && data.auth && typeof data.auth === "object") {
+    validateSecret(data.auth, data.id, fileLocation, reporter);
+  }
+  if (!schemaValid) return null;
 
   const dirName = path.basename(providerDir);
   if (data.id !== dirName) {
@@ -245,7 +280,6 @@ function validateProvider(providerDir, root, reporter) {
       reporter.add("ERROR", fileLocation, "CROSS_ORIGIN_DISCOVERY", "modelDiscovery.url must have the same origin as baseUrl");
     }
   }
-  validateSecret(data.auth, fileLocation, reporter);
   validateHeaders(data.requestHeaders, data.auth, fileLocation, reporter);
 
   const record = {

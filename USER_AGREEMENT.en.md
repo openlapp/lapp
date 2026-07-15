@@ -1,7 +1,7 @@
 # LAPP User Agreement and Risk Disclosure
 
 Agreement version: 1.0  
-Last updated: 2026-07-11
+Last updated: 2026-07-15
 
 > Notice to distributors: this is a jurisdiction-neutral distribution template,
 > not legal advice. Before relying on it as a binding agreement, the Distributor
@@ -22,6 +22,8 @@ In this Agreement:
   LAPP Profile.
 - “Profile” means the local LAPP files that describe Providers, models,
   endpoints, authentication, and defaults.
+- “Vault” means the optional current-user operating-system credential storage
+  used by compatible LAPP Software for credentials referenced by a Profile.
 - “you” means the individual or entity installing or using the LAPP Software.
 
 A Distributor that seeks contractual acceptance must present this Agreement
@@ -61,7 +63,7 @@ the selected Provider.
 LAPP is not:
 
 - an AI model or Provider;
-- a proxy, gateway, firewall, secret vault, or security sandbox;
+- a proxy, gateway, firewall, credential-isolation broker, or security sandbox;
 - malware protection or isolation between applications running as the same
   operating-system user;
 - an identity, access-control, quota, billing, refund, or audit system;
@@ -70,17 +72,22 @@ LAPP is not:
 - a backup, high-availability, multi-user, or production secret-management
   system.
 
-A Distributor may add features outside the LAPP specification. Those features
-are the Distributor's responsibility and require separate disclosure where
-appropriate.
+Compatible LAPP Software may provide Vault-backed encrypted-at-rest credential
+storage. Vault does not prevent a compatible application running as the same
+operating-system user from obtaining plaintext credentials for direct Provider
+requests. A Distributor may add features outside the LAPP specification. Those
+features are the Distributor's responsibility and require separate disclosure
+where appropriate.
 
 ## 4. Key risks you expressly acknowledge
 
 By accepting this Agreement, you acknowledge all of the following:
 
-1. **Credential access.** An application that can resolve a usable Profile can
-   obtain and use the referenced Provider credential. LAPP v1 assumes
-   applications running as the same operating-system user are trusted.
+1. **Credential access.** An application that can resolve a usable Profile or
+   shared Vault reference can obtain and use the referenced Provider
+   credential. LAPP v1 assumes applications running as the same
+   operating-system user are trusted; Vault is not a per-application access
+   boundary or a non-exportable credential mechanism.
 2. **Destination control.** A Profile controls both the credential reference
    and the destination. A malicious or incorrect Profile can send credentials
    and content to an unintended Provider. Validation reduces some mistakes but
@@ -109,11 +116,25 @@ By accepting this Agreement, you acknowledge all of the following:
 
 ## 5. Credentials and Profile security
 
-Plaintext credentials remain in Profile files on disk. An environment reference
-keeps the value out of the Profile, but the resolved value still enters the
-application's process memory. Explicit secret-reveal commands can write a
-credential to terminal output. Query authentication can place a credential in a
-request URL that may appear in Provider, proxy, diagnostic, or request logs.
+Plaintext credentials remain in Profile files on disk. An environment or Vault
+reference keeps the value out of the Profile, but the resolved value still
+enters the application's process memory. Vault records are stored in the
+current user's operating-system credential store and may be read by compatible
+applications running as that user. Query authentication can place a credential
+in a request URL that may appear in Provider, proxy, diagnostic, or request
+logs.
+
+The official SDK binds a Vault record to a Provider identifier, normalized
+origin, and authentication shape. This reduces accidental credential forwarding
+after a Profile change, but a malicious same-user application can bypass that
+SDK check and access the shared record directly. A missing, corrupted, denied,
+or mismatched Vault record fails without falling back to plaintext, environment
+variables, or files.
+
+LAPP does not synchronize or back up Vault records. Reinstalling the operating
+system, resetting the account or credential store, changing devices, or losing
+the upstream key may make a credential unavailable. You remain responsible for
+an independent Provider-side recovery or rotation path.
 
 Transport and validation controls cannot protect a compromised device, a
 malicious local application, an untrusted Profile root, a malicious configured
@@ -125,17 +146,18 @@ You are responsible for:
 - installing only applications you trust with Provider access;
 - reviewing the Profile root, Provider origin, authentication type, and model
   before use;
-- preferring environment references over plaintext credentials;
+- preferring Vault storage or externally managed environment references over
+  plaintext credentials;
 - using restricted, scoped credentials and Provider-side budgets where
   available;
-- protecting Profile files, environment variables, process output, logs, and
-  backups with appropriate operating-system permissions;
+- protecting Profile files, Vault records, environment variables, process
+  output, logs, and backups with appropriate operating-system permissions;
 - rotating or revoking credentials after suspected disclosure; and
 - treating any revealed connection or credential as secret.
 
-Uninstalling LAPP Software does not necessarily delete Profiles, environment
-variables, shell output, Provider-side data, or credentials. Remove retained
-data and revoke credentials separately when needed.
+Uninstalling LAPP Software does not necessarily delete Profiles, Vault records,
+environment variables, shell output, Provider-side data, or credentials.
+Remove retained data and revoke credentials separately when needed.
 
 ## 6. Data, privacy, and third-party Providers
 
@@ -229,9 +251,9 @@ Agreement should be presented again before it applies; changes are not
 retroactive unless applicable law and an express agreement permit that result.
 
 You may stop using the LAPP Software at any time. To reduce residual risk,
-uninstall the relevant application, delete Profiles you no longer need, remove
-environment references, clear exposed output and logs, and rotate or revoke
-Provider credentials.
+uninstall the relevant application, delete Profiles and Vault records you no
+longer need, remove environment references, clear exposed output and logs, and
+rotate or revoke Provider credentials.
 
 Stopping support or this Agreement does not cancel rights already granted by an
 applicable open-source license.

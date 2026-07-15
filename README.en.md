@@ -17,8 +17,8 @@
 
 <p align="center">
   <a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green.svg" /></a>
-  <img alt="Status: draft" src="https://img.shields.io/badge/status-draft-orange.svg" />
-  <img alt="LAPP v1" src="https://img.shields.io/badge/LAPP-v1-blue.svg" />
+  <img alt="Status: standard" src="https://img.shields.io/badge/status-standard-brightgreen.svg" />
+  <img alt="LAPP v1.0.0" src="https://img.shields.io/badge/LAPP-v1.0.0-blue.svg" />
 </p>
 
 ---
@@ -66,7 +66,7 @@ LAPP v1 uses standard JSON only. Every file has `"schemaVersion": "1.0"`. `provi
   "protocols": ["openai-chat-completions"],
   "auth": {
     "type": "bearer",
-    "secret": "env://DEEPSEEK_API_KEY"
+    "secret": "vault://deepseek/default"
   }
 }
 ```
@@ -108,7 +108,7 @@ LAPP v1 uses standard JSON only. Every file has `"schemaVersion": "1.0"`. `provi
 - Protocol order is preference order; an application selects the first protocol it supports.
 - Core chat protocol IDs are `openai-chat-completions`, `openai-responses`, and `anthropic-messages`.
 - Authentication is a strict `none`, `bearer`, `header`, or `query` shape.
-- v1 secrets are plaintext or `env://NAME`; plaintext produces a warning.
+- v1 secrets are plaintext, `env://NAME`, or the strict device-backed form `vault://<providerId>/<credentialId>`; new credential tools default raw secrets to Vault, while plaintext remains an explicit warned choice.
 - Credentials are resolved only when connecting or explicitly refreshing, never when listing models.
 - Applications call upstream providers directly using their own adapter or the optional SDK client.
 
@@ -116,7 +116,7 @@ See the [English specification](./spec.en.md) or [Chinese specification](./spec.
 
 ## Security boundary
 
-An application that resolves a LAPP connection receives a usable provider credential. Access to a usable profile must therefore be treated as permission to use that credential.
+An application that resolves a LAPP connection receives a usable provider credential. Device Vault protects credentials at rest but does not make them non-exportable or isolate applications running as the same OS user. Access to a usable profile and credential must therefore be treated as permission to use that credential.
 
 Profiles select both credentials and destinations. Load only a user-selected LAPP root, require HTTPS except for loopback, keep model discovery on the provider origin, reject authenticated redirects, and never log resolved secrets. See [Security Guidance](./security.en.md).
 

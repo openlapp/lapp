@@ -6,6 +6,6 @@
   "protocols": ["openai-chat-completions"],
   "auth": {
     "type": "bearer",
-    "secret": "env://DEEPSEEK_API_KEY"
+    "secret": "vault://deepseek/default"
   }
 }

@@ -1,6 +1,6 @@
 # LAPP v1 Reference Validator
 
-The reference validator is a read-only executable definition of the LAPP v1 acceptance rules. It never edits profiles, resolves environment secrets, or makes network requests.
+The reference validator is a read-only executable definition of the LAPP v1 acceptance rules. It never edits profiles, resolves environment or Vault secrets, accesses the OS credential store, or makes network requests.
 
 ## Usage
 
@@ -24,6 +24,11 @@ JSONC, `manifest.json`, legacy protocol fields, and unknown core properties are 
 - `OK` and `INFO` describe accepted data.
 - `WARN` reports a valid but risky choice, currently plaintext secrets.
 - `ERROR` reports an invalid profile with a stable diagnostic code.
+
+Secret-reference diagnostics distinguish malformed `env://` and `vault://`
+references, a Vault provider-ID mismatch, and unsupported schemes. The validator
+checks only reference syntax and binding metadata; a missing local Vault record
+is a runtime condition, not a profile validation error.
 
 Exit codes are `0` for no errors, `1` for an invalid profile, and `2` for bad CLI usage or an unexpected validator failure.
 

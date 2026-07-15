@@ -10,7 +10,7 @@ An application may implement LAPP directly, use an SDK, or call a CLI with stabl
 4. Validate each document against the LAPP 1.0 Schema.
 5. Apply semantic checks: directory identity, URL safety, protocol subsets, model/alias uniqueness, and defaults.
 6. Expose enabled local models without resolving credentials or accessing the network.
-7. On model selection, resolve one canonical model, one supported protocol, and exactly one auth mechanism.
+7. On model selection, resolve one canonical model, one supported protocol, and exactly one auth mechanism. Recognize plaintext, `env://`, and `vault://`; reject every other scheme.
 8. Use the application's own upstream adapter to send the request directly.
 
 Do not read JSONC, `manifest.json`, legacy `protocol`, or protocol objects. Do not guess `/v1`, model-list URLs, model capabilities, or auth behavior.
@@ -29,7 +29,37 @@ Only normalized profiles should reach request code. File paths and diagnostics a
 
 Model listing is a pure read of `models.json`. It should support filtering by provider and enabled state, but must not refresh remote data implicitly.
 
-Connection resolution follows the normative algorithm in the specification. Alias input becomes a canonical model ID. Protocol selection is the first ordered candidate supported by the application. Missing credentials, disabled targets, ambiguity, and no protocol intersection are errors.
+Connection resolution follows the normative algorithm in the specification. Alias input becomes a canonical model ID. Protocol selection is the first ordered candidate supported by the application. Missing credentials, disabled targets, ambiguity, no protocol intersection, an unavailable Vault backend, and a Vault binding mismatch are errors.
+
+Resolve credentials just in time for an authenticated request or explicit refresh. Do not keep a resolved Vault value for a client object's lifetime: resolving again on the next operation makes rotation effective and narrows the lifetime of plaintext in memory. Recheck the final request origin against the validated provider and Vault binding immediately before sending.
+
+## Credential storage
+
+Use the exact secret-reference grammar in the specification. The profile stores only `vault://<providerId>/<credentialId>`; the OS credential facility stores the `VaultEnvelopeV1` value under service `dev.lapp.vault.v1` and account `<providerId>/<credentialId>`. Keep that backend adapter behind a credential-resolver interface so model listing and profile validation remain pure operations.
+
+A high-level credential-creation API should store a supplied raw secret in Vault with credential ID `default` unless the caller explicitly requests plaintext or supplies an environment-variable name. A low-level profile editor may still accept any valid secret form without accessing the Vault. Never derive Vault binding metadata from caller-supplied fields separate from the final validated provider; derive provider ID, URL origin, and auth shape from that provider.
+
+For a Vault read, parse and validate the stored JSON before using its secret. Require an exact provider ID, credential ID, origin, and normalized auth match. Do not automatically rebind a record after configuration changes, and never use a file, environment variable, plaintext value, or second credential as a fallback. A missing record is a runtime error and does not make model discovery or the profile itself invalid.
+
+Credential implementations should expose stable, redacted failures. The official SDK and CLI use:
+
+```text
+INVALID_SECRET_REFERENCE
+UNSUPPORTED_SECRET_SCHEME
+ENV_SECRET_MISSING
+VAULT_BACKEND_UNAVAILABLE
+VAULT_CREDENTIAL_NOT_FOUND
+VAULT_CREDENTIAL_EXISTS
+VAULT_RECORD_INVALID
+VAULT_BINDING_MISMATCH
+VAULT_ACCESS_DENIED
+VAULT_OPERATION_FAILED
+CREDENTIAL_UPDATE_PARTIAL_FAILURE
+```
+
+Native causes, if retained internally, must first be sanitized and must not be serialized. Error objects, diagnostics, and output must not include native backend text, the resolved secret, or the stored envelope.
+
+Credential-management tools should provide set, status, and delete operations without a routine get/export/rebind operation. Status may report scheme, availability, and binding state but not the value. Deleting a provider must not automatically delete its current-user shared Vault record.
 
 ## Explicit remote refresh
 
@@ -41,7 +71,9 @@ Apply uses append-only merge semantics: preserve existing entries and fields, ap
 
 Never turn an invalid ID into a filename. Resolve and check every target path against the root before writing or deleting. For a changed file, write a temporary sibling, flush it, and atomically rename it. Do not rewrite unchanged files.
 
-LAPP v1 assumes one writer. Do not add a lock, daemon, database, cache, migration layer, or profile-wide transaction until a real concurrency requirement exists.
+When one high-level operation writes both a Vault record and a profile, validate the complete proposed profile first, preserve any prior Vault value, write the Vault, and then atomically write the profile. If the profile write fails, restore the prior Vault state. If restoration fails, return a distinct partial-failure error without exposing either secret. A dry run must not read or write the Vault.
+
+LAPP v1 assumes one writer. Do not add a lock, daemon, database, secret file fallback, cache, migration layer, or profile-wide transaction until a real concurrency requirement exists.
 
 ## Conformance
 
