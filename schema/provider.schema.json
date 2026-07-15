@@ -8,8 +8,7 @@
   "properties": {
     "schemaVersion": { "const": "1.0" },
     "id": {
-      "type": "string",
-      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"
+      "$ref": "#/$defs/portableId"
     },
     "name": { "type": "string", "minLength": 1 },
     "enabled": { "type": "boolean" },
@@ -37,6 +36,20 @@
     }
   },
   "$defs": {
+    "portableId": {
+      "type": "string",
+      "allOf": [
+        { "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$" },
+        {
+          "not": {
+            "anyOf": [
+              { "pattern": "^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\\.|$)" },
+              { "pattern": "\\.$" }
+            ]
+          }
+        }
+      ]
+    },
     "protocolId": {
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
@@ -44,7 +57,7 @@
     "secret": {
       "type": "string",
       "description": "A strict env:// or vault:// reference, or an explicit non-URI plaintext secret",
-      "pattern": "^(?:env://[A-Za-z_][A-Za-z0-9_]*|vault://[a-z0-9][a-z0-9._-]{0,63}/[a-z0-9][a-z0-9._-]{0,63}|(?!env:)(?!vault:)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!\\s*$)[^\\r\\n]+)$"
+      "pattern": "^(?:env://[A-Za-z_][A-Za-z0-9_]*|vault://(?!(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\\.|/))[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9_-])?/(?!(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\\.|$))[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9_-])?|(?!env:)(?!vault:)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!\\s*$)[^\\r\\n]+)$"
     },
     "auth": {
       "oneOf": [

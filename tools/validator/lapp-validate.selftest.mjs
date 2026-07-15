@@ -3,10 +3,37 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import Ajv2020 from "ajv/dist/2020.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const VALIDATOR = "tools/validator/lapp-validate.mjs";
 let assertions = 0;
+
+const providerSchema = JSON.parse(fs.readFileSync(path.join(ROOT, "schema/provider.schema.json"), "utf8"));
+const validateProviderSchema = new Ajv2020({ allErrors: true, strict: false }).compile(providerSchema);
+
+function providerWith(id, secret) {
+  return {
+    schemaVersion: "1.0",
+    id,
+    baseUrl: "https://api.example.com/v1",
+    protocols: ["openai-chat-completions"],
+    auth: { type: "bearer", secret },
+  };
+}
+
+for (const id of ["con", "nul.txt", "foo."]) {
+  assertions += 1;
+  assert.equal(validateProviderSchema(providerWith(id, "plaintext")), false, `Schema should reject provider id ${id}`);
+}
+for (const secret of [
+  "vault://con/default",
+  "vault://provider/nul.txt",
+  "vault://provider/foo.",
+]) {
+  assertions += 1;
+  assert.equal(validateProviderSchema(providerWith("provider", secret)), false, `Schema should reject ${secret}`);
+}
 
 function run(args) {
   try {
